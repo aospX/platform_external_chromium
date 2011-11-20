@@ -209,6 +209,7 @@ LOCAL_SRC_FILES += \
     net/base/x509_certificate_openssl.cc \
     net/base/x509_certificate_openssl_android.cc \
     net/base/x509_openssl_util.cc \
+    net/base/request_priority.cc \
     \
     net/disk_cache/addr.cc \
     net/disk_cache/backend_impl.cc \
