@@ -279,6 +279,7 @@ LOCAL_SRC_FILES += \
     net/http/http_vary_data.cc \
     net/http/md4.cc \
     net/http/partial_data.cc \
+    net/http/preconnect.cc \
     \
     net/proxy/init_proxy_resolver.cc \
     net/proxy/multi_threaded_proxy_resolver.cc \
