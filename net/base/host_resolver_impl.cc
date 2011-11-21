@@ -1479,6 +1479,11 @@ void HostResolverImpl::AbortAllInProgressJobs() {
   }
 }
 
+void HostResolverImpl::ForgetHostPortPair(const net::HostPortPair& host_pair) {
+  net::HostResolver::RequestInfo resolve_info(host_pair);
+  cache()->RemoveEntry(GetEffectiveKeyForRequest(resolve_info));
+}
+
 void HostResolverImpl::OnIPAddressChanged() {
   if (cache_.get())
     cache_->clear();

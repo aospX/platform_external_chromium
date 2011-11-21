@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -97,6 +98,8 @@ class ClientSocketPoolManager : public base::NonThreadSafe,
 
   SSLClientSocketPool* GetSocketPoolForSSLWithProxy(
       const HostPortPair& proxy_server);
+
+  HostResolver* host_resolver(){return host_resolver_;}
 
   static int max_sockets_per_group();
   static void set_max_sockets_per_group(int socket_count);

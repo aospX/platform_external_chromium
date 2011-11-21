@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -239,6 +240,7 @@ class HttpProxyClientSocketPool : public ClientSocketPool {
                                       ConnectJob::Delegate* delegate) const;
 
     virtual base::TimeDelta ConnectionTimeout() const { return timeout_; }
+    virtual HostResolver* GetHostResolver() const { return host_resolver_; }
 
    private:
     TransportClientSocketPool* const transport_pool_;

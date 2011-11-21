@@ -1,4 +1,5 @@
 // Copyright (c) 2009 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,6 +49,11 @@ const HostCache::Entry* HostCache::Lookup(const Key& key,
     return entry;
 
   return NULL;
+}
+
+void HostCache::RemoveEntry(const Key& key) {
+  DCHECK(CalledOnValidThread());
+  entries_.erase(key);
 }
 
 HostCache::Entry* HostCache::Set(const Key& key,

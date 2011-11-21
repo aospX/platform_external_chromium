@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -44,6 +45,7 @@
 #include "net/base/request_priority.h"
 #include "net/socket/client_socket.h"
 #include "net/socket/client_socket_pool.h"
+#include "net/base/host_resolver.h"
 
 namespace net {
 
@@ -214,6 +216,7 @@ class ClientSocketPoolBaseHelper
         ConnectJob::Delegate* delegate) const = 0;
 
     virtual base::TimeDelta ConnectionTimeout() const = 0;
+    virtual HostResolver* GetHostResolver() const = 0;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(ConnectJobFactory);
@@ -591,6 +594,7 @@ class ClientSocketPoolBase {
           params_(params) {}
 
     const scoped_refptr<SocketParams>& params() const { return params_; }
+    virtual HostResolver* GetHostResolver() const { return NULL; }
 
    private:
     const scoped_refptr<SocketParams> params_;
@@ -605,6 +609,8 @@ class ClientSocketPoolBase {
         const std::string& group_name,
         const Request& request,
         ConnectJob::Delegate* delegate) const = 0;
+
+    virtual HostResolver* GetHostResolver() const { return NULL; }
 
     virtual base::TimeDelta ConnectionTimeout() const = 0;
 
@@ -770,6 +776,10 @@ class ClientSocketPoolBase {
 
     virtual base::TimeDelta ConnectionTimeout() const {
       return connect_job_factory_->ConnectionTimeout();
+    }
+
+    virtual HostResolver* GetHostResolver() const {
+      return connect_job_factory_->GetHostResolver();
     }
 
     const scoped_ptr<ConnectJobFactory> connect_job_factory_;

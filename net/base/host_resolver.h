@@ -181,6 +181,11 @@ class HostResolver {
   virtual void SetDefaultAddressFamily(AddressFamily address_family) {}
   virtual AddressFamily GetDefaultAddressFamily() const;
 
+  // Forgets resolution of specific <host, port> pair.
+  // Note: the method does not remove the pair from the DNS cache located
+  // inside bionic library.
+  virtual void ForgetHostPortPair(const net::HostPortPair& host_pair) {}
+
   // Returns |this| cast to a HostResolverImpl*, or NULL if the subclass
   // is not compatible with HostResolverImpl. Used primarily to expose
   // additional functionality on the about:net-internals page.

@@ -94,6 +94,8 @@ class HostResolverImpl : public HostResolver,
   // address family to IPv4 iff IPv6 is not supported.
   void ProbeIPv6Support();
 
+  virtual void ForgetHostPortPair(const net::HostPortPair& host_pair);
+
   // Returns the cache this resolver uses, or NULL if caching is disabled.
   HostCache* cache() { return cache_.get(); }
 

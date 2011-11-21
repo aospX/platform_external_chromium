@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -93,6 +94,8 @@ class HostCache : public base::NonThreadSafe {
              int error,
              const AddressList& addrlist,
              base::TimeTicks now);
+
+  void RemoveEntry(const Key& key);
 
   // Empties the cache
   void clear();

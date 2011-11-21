@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -93,6 +94,10 @@ class HttpNetworkSession : public base::RefCounted<HttpNetworkSession>,
 
   SSLClientSocketPool* ssl_socket_pool() {
     return socket_pool_manager_.ssl_socket_pool();
+  }
+
+  HostResolver* host_resolver() {
+    return socket_pool_manager_.host_resolver();
   }
 
   SOCKSClientSocketPool* GetSocketPoolForSOCKSProxy(

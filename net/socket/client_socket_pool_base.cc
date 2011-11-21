@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +16,7 @@
 #include "net/base/net_log.h"
 #include "net/base/net_errors.h"
 #include "net/socket/client_socket_handle.h"
+#include "net/network_monitor/network_monitor_factory.h"
 
 using base::TimeDelta;
 
@@ -1016,6 +1018,20 @@ void ClientSocketPoolBaseHelper::InvokeUserCallback(
   CompletionCallback* callback = it->second.callback;
   int result = it->second.result;
   pending_callback_map_.erase(it);
+  switch (result) {
+    case ERR_CONNECTION_TIMED_OUT:
+    case ERR_CONNECTION_FAILED:
+    case ERR_CONNECTION_ABORTED:
+    case ERR_CONNECTION_REFUSED:
+    case ERR_ADDRESS_UNREACHABLE:
+    case ERR_ADDRESS_INVALID: {
+      static network::INetworkTransactionMonitor* monitor =
+        network::NetworkMonitorFactory::GetMonitorFactoryInstance()->GetNetworkTransactionMonitor();
+      if(NULL != monitor) {
+        monitor->OnIOFailure(connect_job_factory_->GetHostResolver(), handle->group_name());
+      }
+    }
+  }
   callback->Run(result);
 }
 

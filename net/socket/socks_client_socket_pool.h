@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -173,6 +174,8 @@ class SOCKSClientSocketPool : public ClientSocketPool {
           net_log_(net_log) {}
 
     virtual ~SOCKSConnectJobFactory() {}
+
+    virtual HostResolver* GetHostResolver() const { return host_resolver_;}
 
     // ClientSocketPoolBase::ConnectJobFactory methods.
     virtual ConnectJob* NewConnectJob(

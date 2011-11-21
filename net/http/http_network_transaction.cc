@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -54,6 +55,7 @@
 #include "net/spdy/spdy_http_stream.h"
 #include "net/spdy/spdy_session.h"
 #include "net/spdy/spdy_session_pool.h"
+#include "net/network_monitor/network_monitor_factory.h"
 
 using base::Time;
 
@@ -872,6 +874,16 @@ int HttpNetworkTransaction::DoReadHeadersComplete(int result) {
     // https://bugzilla.mozilla.org/show_bug.cgi?id=193921
     if (request_->method == "PUT")
       return ERR_METHOD_NOT_SUPPORTED;
+  }
+
+  int response_code = response_.headers->response_code();
+  if (404 == response_code || 500 == response_code) {
+    HostPortPair pair(request_->url.HostNoBrackets(), request_->url.EffectiveIntPort());
+    static network::INetworkTransactionMonitor* monitor =
+      network::NetworkMonitorFactory::GetMonitorFactoryInstance()->GetNetworkTransactionMonitor();
+    if(NULL != monitor) {
+      monitor->OnResourceNotFound(session_->host_resolver(), pair);
+    }
   }
 
   // Check for an intermediate 100 Continue response.  An origin server is
