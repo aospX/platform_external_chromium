@@ -410,6 +410,7 @@ LOCAL_SRC_FILES += \
 LOCAL_SRC_FILES += net/disk_cache/stat_hub.cc \
     net/disk_cache/stat_hub_api.cc \
     net/disk_cache/pp_proc_plugin_bridge.cc
+LOCAL_SRC_FILES += net/http/net-plugin-bridge.cc
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH) \
