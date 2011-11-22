@@ -17,6 +17,10 @@
 #include "net/base/net_errors.h"
 #include "net/socket/client_socket_handle.h"
 #include "net/network_monitor/network_monitor_factory.h"
+#include "net/http/http_network_session.h"
+#include "net/http/preconnect.h"
+#include "net/http/tcp-connections-bridge.h"
+#include "googleurl/src/gurl.h"
 
 using base::TimeDelta;
 
@@ -160,7 +164,8 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
     int max_sockets_per_group,
     base::TimeDelta unused_idle_socket_timeout,
     base::TimeDelta used_idle_socket_timeout,
-    ConnectJobFactory* connect_job_factory)
+    ConnectJobFactory* connect_job_factory,
+    HttpNetworkSession *network_session)
     : idle_socket_count_(0),
       connecting_socket_count_(0),
       handed_out_socket_count_(0),
@@ -176,6 +181,8 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
   DCHECK_LE(max_sockets_per_group, max_sockets);
 
   NetworkChangeNotifier::AddIPAddressObserver(this);
+
+  network_session_ = network_session;
 }
 
 ClientSocketPoolBaseHelper::~ClientSocketPoolBaseHelper() {
@@ -258,7 +265,7 @@ void ClientSocketPoolBaseHelper::RequestSockets(
 
   int rv = OK;
   for (int num_iterations_left = num_sockets;
-       group->NumActiveSocketSlots() < num_sockets &&
+       group->NumActiveSocketSlots() <= num_sockets &&
        num_iterations_left > 0 ; num_iterations_left--) {
     rv = RequestSocketInternal(group_name, &request);
     if (rv < 0 && rv != ERR_IO_PENDING) {
@@ -365,6 +372,14 @@ int ClientSocketPoolBaseHelper::RequestSocketInternal(
     } else if (group->IsEmpty()) {
       RemoveGroup(group_name);
     }
+  }
+
+  if (!preconnecting) {
+      std::string url;
+      url.append("http://");
+      url.append(group_name);
+      GURL gurl = GURL(url);
+      ObserveConnections(network_session_, gurl);
   }
 
   return rv;

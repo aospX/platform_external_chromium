@@ -195,7 +195,8 @@ class SSLClientSocketPool : public ClientSocketPool,
       SOCKSClientSocketPool* socks_pool,
       HttpProxyClientSocketPool* http_proxy_pool,
       SSLConfigService* ssl_config_service,
-      NetLog* net_log);
+      NetLog* net_log,
+      HttpNetworkSession *network_session);
 
   virtual ~SSLClientSocketPool();
 

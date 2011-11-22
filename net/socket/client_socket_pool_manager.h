@@ -45,6 +45,7 @@ class SSLClientSocketPool;
 class SSLConfigService;
 class SSLHostInfoFactory;
 class TransportClientSocketPool;
+class HttpNetworkSession;
 
 struct HttpRequestInfo;
 struct SSLConfig;
@@ -78,7 +79,8 @@ class ClientSocketPoolManager : public base::NonThreadSafe,
                           DnsCertProvenanceChecker* dns_cert_checker,
                           SSLHostInfoFactory* ssl_host_info_factory,
                           ProxyService* proxy_service,
-                          SSLConfigService* ssl_config_service);
+                          SSLConfigService* ssl_config_service,
+                          HttpNetworkSession *network_session);
   ~ClientSocketPoolManager();
 
   void FlushSocketPools();
@@ -177,6 +179,7 @@ class ClientSocketPoolManager : public base::NonThreadSafe,
   SSLHostInfoFactory* const ssl_host_info_factory_;
   const scoped_refptr<ProxyService> proxy_service_;
   const scoped_refptr<SSLConfigService> ssl_config_service_;
+  HttpNetworkSession *http_network_session_;
 
   // Note: this ordering is important.
 

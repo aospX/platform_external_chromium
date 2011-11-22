@@ -32,6 +32,7 @@ class SpdySessionPool;
 class SpdyStream;
 class TransportClientSocketPool;
 class TransportSocketParams;
+class HttpNetworkSession;
 
 // HttpProxySocketParams only needs the socket params for one of the proxy
 // types.  The other param must be NULL.  When using an HTTP Proxy,
@@ -180,7 +181,8 @@ class HttpProxyClientSocketPool : public ClientSocketPool {
       HostResolver* host_resolver,
       TransportClientSocketPool* transport_pool,
       SSLClientSocketPool* ssl_pool,
-      NetLog* net_log);
+      NetLog* net_log,
+      HttpNetworkSession *network_session);
 
   virtual ~HttpProxyClientSocketPool();
 

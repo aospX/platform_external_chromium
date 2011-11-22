@@ -19,7 +19,6 @@
 // implementing ConnectJob::ConnectInternal().  They can control the parameters
 // passed to each new ConnectJob instance via their ConnectJobFactory subclass
 // and templated SocketParams parameter.
-//
 #ifndef NET_SOCKET_CLIENT_SOCKET_POOL_BASE_H_
 #define NET_SOCKET_CLIENT_SOCKET_POOL_BASE_H_
 #pragma once
@@ -50,6 +49,7 @@
 namespace net {
 
 class ClientSocketHandle;
+class HttpNetworkSession;
 
 // ConnectJob provides an abstract interface for "connecting" a socket.
 // The connection may involve host resolution, tcp connection, ssl connection,
@@ -227,7 +227,8 @@ class ClientSocketPoolBaseHelper
       int max_sockets_per_group,
       base::TimeDelta unused_idle_socket_timeout,
       base::TimeDelta used_idle_socket_timeout,
-      ConnectJobFactory* connect_job_factory);
+      ConnectJobFactory* connect_job_factory,
+      HttpNetworkSession *network_session);
 
   ~ClientSocketPoolBaseHelper();
 
@@ -331,6 +332,7 @@ class ClientSocketPoolBaseHelper
 
   typedef std::deque<const Request* > RequestQueue;
   typedef std::map<const ClientSocketHandle*, const Request*> RequestMap;
+  HttpNetworkSession *network_session_;
 
   // A Group is allocated per group_name when there are idle sockets or pending
   // requests.  Otherwise, the Group object is removed from the map.
@@ -630,11 +632,13 @@ class ClientSocketPoolBase {
       ClientSocketPoolHistograms* histograms,
       base::TimeDelta unused_idle_socket_timeout,
       base::TimeDelta used_idle_socket_timeout,
-      ConnectJobFactory* connect_job_factory)
+      ConnectJobFactory* connect_job_factory,
+      HttpNetworkSession *network_session)
       : histograms_(histograms),
         helper_(max_sockets, max_sockets_per_group,
                 unused_idle_socket_timeout, used_idle_socket_timeout,
-                new ConnectJobFactoryAdaptor(connect_job_factory)) {}
+                new ConnectJobFactoryAdaptor(connect_job_factory),
+                network_session) {}
 
   virtual ~ClientSocketPoolBase() {}
 

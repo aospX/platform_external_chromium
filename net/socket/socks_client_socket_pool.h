@@ -118,7 +118,8 @@ class SOCKSClientSocketPool : public ClientSocketPool {
       ClientSocketPoolHistograms* histograms,
       HostResolver* host_resolver,
       TransportClientSocketPool* transport_pool,
-      NetLog* net_log);
+      NetLog* net_log,
+      HttpNetworkSession *network_session);
 
   virtual ~SOCKSClientSocketPool();
 

@@ -127,7 +127,8 @@ class TCPClientSocketPool : public ClientSocketPool {
       ClientSocketPoolHistograms* histograms,
       HostResolver* host_resolver,
       ClientSocketFactory* client_socket_factory,
-      NetLog* net_log);
+      NetLog* net_log,
+      HttpNetworkSession *network_session);
 
   virtual ~TCPClientSocketPool();
 

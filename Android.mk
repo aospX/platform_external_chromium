@@ -283,6 +283,7 @@ LOCAL_SRC_FILES += \
     net/http/partial_data.cc \
     net/http/preconnect.cc \
     net/http/http_connection_reuse_bridge.cc \
+    net/http/tcp-connections-bridge.cc \
     \
     net/proxy/init_proxy_resolver.cc \
     net/proxy/multi_threaded_proxy_resolver.cc \
