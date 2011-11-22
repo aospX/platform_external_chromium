@@ -406,6 +406,10 @@ LOCAL_SRC_FILES += \
     webkit/glue/form_data.cc \
     webkit/glue/form_field.cc
 
+LOCAL_SRC_FILES += net/disk_cache/stat_hub.cc \
+    net/disk_cache/stat_hub_api.cc \
+    net/disk_cache/pp_proc_plugin_bridge.cc
+
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH) \
     $(LOCAL_PATH)/chrome \

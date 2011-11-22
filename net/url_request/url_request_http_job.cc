@@ -1,4 +1,6 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved
+
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,6 +42,8 @@
 #include "net/url_request/url_request_redirect_job.h"
 #include "net/url_request/url_request_throttler_header_adapter.h"
 #include "net/url_request/url_request_throttler_manager.h"
+
+extern void StatHubCmd(unsigned short cmd, const char* param1, const char* param2);
 
 static const char kAvailDictionaryHeader[] = "Avail-Dictionary";
 
@@ -296,6 +300,14 @@ void URLRequestHttpJob::DestroyTransaction() {
   context_ = NULL;
 }
 
+static void updateUrlRequest(const GURL& url, const std::string& headers) {
+    unsigned short url_len = url.spec().length();
+
+    if (url_len && (url.SchemeIs("http") || url.SchemeIsSecure())) {
+        StatHubCmd(8, url.spec().c_str(), headers.c_str());
+    }
+}
+
 void URLRequestHttpJob::StartTransaction() {
   // NOTE: This method assumes that request_info_ is already setup properly.
 
@@ -317,6 +329,7 @@ void URLRequestHttpJob::StartTransaction() {
     if (rv == OK) {
       if (!URLRequestThrottlerManager::GetInstance()->enforce_throttling() ||
           !throttling_entry_->IsDuringExponentialBackoff()) {
+        updateUrlRequest(request_info_.url, request_info_.extra_headers.ToString().c_str());
         rv = transaction_->Start(
             &request_info_, &start_callback_, request_->net_log());
       } else {
