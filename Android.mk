@@ -319,6 +319,7 @@ LOCAL_SRC_FILES += \
     net/socket/tcp_client_socket.cc \
     net/socket/tcp_client_socket_libevent.cc \
     net/socket/transport_client_socket_pool.cc \
+    net/socket/tcp_keepalive_bridge.cc \
     \
     net/spdy/spdy_framer.cc \
     net/spdy/spdy_frame_builder.cc \
