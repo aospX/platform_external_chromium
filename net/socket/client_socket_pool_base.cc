@@ -21,6 +21,8 @@
 #include "net/http/preconnect.h"
 #include "net/http/tcp-connections-bridge.h"
 #include "googleurl/src/gurl.h"
+#include <cutils/properties.h>
+#include <cutils/log.h>
 
 using base::TimeDelta;
 
@@ -32,7 +34,7 @@ namespace {
 // Note: It's important to close idle sockets that have received data as soon
 // as possible because the received data may cause BSOD on Windows XP under
 // some conditions.  See http://crbug.com/4606.
-const int kCleanupInterval = 10;  // DO NOT INCREASE THIS TIMEOUT.
+int kCleanupInterval = 10;  // DO NOT INCREASE THIS TIMEOUT.
 
 // Indicate whether or not we should establish a new transport layer connection
 // after a certain timeout has passed without receiving an ACK.
@@ -183,6 +185,27 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
   NetworkChangeNotifier::AddIPAddressObserver(this);
 
   network_session_ = network_session;
+
+  ReadTCPFinAggregationSystemProperties();
+
+  tcp_fin_aggregation = net::TCPFinAggregationFactory::GetTCPFinFactoryInstance(this)->GetTCPFinAggregation();
+  if (NULL == tcp_fin_aggregation) {
+    SLOGD("Failed to create TCP Fin Aggregation interface.");
+  }
+}
+
+void ClientSocketPoolBaseHelper::ReadTCPFinAggregationSystemProperties()
+{
+  char net_tcp_fin_aggr_feature_enabled_sys_property[91];
+  if(property_get("net.tcp.fin.aggregation",
+                  net_tcp_fin_aggr_feature_enabled_sys_property, "1")) {
+      net_tcp_fin_aggr_feature_enabled_sys_property_ =
+        (bool)atoi(net_tcp_fin_aggr_feature_enabled_sys_property);
+      SLOGD("system property net.tcp.fin.aggregation was set");
+  }
+  if (true == net_tcp_fin_aggr_feature_enabled_sys_property_) {
+    kCleanupInterval = 2;
+  }
 }
 
 ClientSocketPoolBaseHelper::~ClientSocketPoolBaseHelper() {
@@ -420,7 +443,7 @@ bool ClientSocketPoolBaseHelper::AssignIdleSocketToGroup(
   if (idle_socket_it != idle_sockets->end()) {
     DecrementIdleCount();
     base::TimeDelta idle_time =
-        base::TimeTicks::Now() - idle_socket_it->start_time;
+        base::Time::Now() - idle_socket_it->start_time;
     IdleSocket idle_socket = *idle_socket_it;
     idle_sockets->erase(idle_socket_it);
     HandOutSocket(
@@ -595,8 +618,8 @@ DictionaryValue* ClientSocketPoolBaseHelper::GetInfoAsValue(
   return dict;
 }
 
-bool ClientSocketPoolBaseHelper::IdleSocket::ShouldCleanup(
-    base::TimeTicks now,
+bool IdleSocket::ShouldCleanup(
+    base::Time now,
     base::TimeDelta timeout) const {
   bool timed_out = (now - start_time) >= timeout;
   if (timed_out)
@@ -612,7 +635,7 @@ void ClientSocketPoolBaseHelper::CleanupIdleSockets(bool force) {
 
   // Current time value. Retrieving it once at the function start rather than
   // inside the inner loop, since it shouldn't change by any meaningful amount.
-  base::TimeTicks now = base::TimeTicks::Now();
+  base::Time now = base::Time::Now();
 
   GroupMap::iterator i = group_map_.begin();
   while (i != group_map_.end()) {
@@ -639,6 +662,11 @@ void ClientSocketPoolBaseHelper::CleanupIdleSockets(bool force) {
       ++i;
     }
   }
+}
+
+void ClientSocketPoolBaseHelper::ReaperCleanupIdleSockets()
+{
+  tcp_fin_aggregation->ReaperCleanup();
 }
 
 ClientSocketPoolBaseHelper::Group* ClientSocketPoolBaseHelper::GetOrCreateGroup(
@@ -686,8 +714,21 @@ void ClientSocketPoolBaseHelper::IncrementIdleCount() {
 }
 
 void ClientSocketPoolBaseHelper::DecrementIdleCount() {
-  if (--idle_socket_count_ == 0)
+  if (--idle_socket_count_ == 0) {
     timer_.Stop();
+  }
+}
+
+void ClientSocketPoolBaseHelper::OnCleanupTimerFired()
+{
+  if(net_tcp_fin_aggr_feature_enabled_sys_property_ &&
+     (NULL != tcp_fin_aggregation) /*&&
+     (tcp_fin_aggregation->IsConnectedToWWAN())*/) {
+    ReaperCleanupIdleSockets();
+  }
+  else {
+    CleanupIdleSockets(false);
+  }
 }
 
 void ClientSocketPoolBaseHelper::ReleaseSocket(const std::string& group_name,
@@ -918,7 +959,7 @@ void ClientSocketPoolBaseHelper::AddIdleSocket(
   DCHECK(socket);
   IdleSocket idle_socket;
   idle_socket.socket = socket;
-  idle_socket.start_time = base::TimeTicks::Now();
+  idle_socket.start_time = base::Time::Now();
 
   group->mutable_idle_sockets()->push_back(idle_socket);
   IncrementIdleCount();
