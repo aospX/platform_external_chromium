@@ -1,4 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,6 +15,8 @@
 #include "net/base/completion_callback.h"
 #include "net/base/host_port_pair.h"
 #include "net/base/request_priority.h"
+
+class MessageLoop;
 
 namespace net {
 
@@ -244,6 +247,12 @@ HostResolver* CreateSystemHostResolver(size_t max_concurrent_resolves,
                                        HostResolverProc* resolver_proc,
                                        NetLog* net_log);
 
+// If specified |net_notification_messageloop| provides a message loop
+// to be used for network notifications.
+HostResolver* CreateSystemHostResolver(size_t max_concurrent_resolves,
+                                       HostResolverProc* resolver_proc,
+                                       NetLog* net_log,
+                                       MessageLoop* net_notification_messageloop);
 }  // namespace net
 
 #endif  // NET_BASE_HOST_RESOLVER_H_
