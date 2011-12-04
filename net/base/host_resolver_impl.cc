@@ -928,7 +928,8 @@ HostResolverImpl::HostResolverImpl(
       ipv6_probe_monitoring_(false),
       additional_resolver_flags_(0),
       net_log_(net_log),
-      net_notification_messageloop_(net_notification_messageloop)
+      net_notification_messageloop_(net_notification_messageloop),
+      resolverext_(NULL)
 {
   DCHECK_GT(max_jobs, 0u);
 
@@ -1504,6 +1505,14 @@ void HostResolverImpl::OnIPAddressChanged() {
 #endif
   AbortAllInProgressJobs();
   // |this| may be deleted inside AbortAllInProgressJobs().
+
+  if (resolverext_)  {
+      resolverext_->Resolve();
+  }
 }
 
+void HostResolverImpl::SetResolverExt(HostnameResolverExt* resolverext) {
+      LOG(INFO)<<"HostResolverImpl::SetPreresolver preresolver:"<<resolverext;
+      resolverext_ = resolverext;
+  }
 }  // namespace net

@@ -212,6 +212,8 @@ LOCAL_SRC_FILES += \
     net/base/request_priority.cc \
     \
     net/network_monitor/network_monitor_factory.cc \
+    net/host_resolver_helper/dyn_lib_loader.cc \
+    net/host_resolver_helper/host_resolver_helper.cc \
     \
     net/disk_cache/addr.cc \
     net/disk_cache/backend_impl.cc \
@@ -415,6 +417,10 @@ LOCAL_SRC_FILES += net/disk_cache/stat_hub.cc \
     net/disk_cache/stat_hub_api.cc \
     net/disk_cache/pp_proc_plugin_bridge.cc
 LOCAL_SRC_FILES += net/http/net-plugin-bridge.cc
+
+LOCAL_SRC_FILES += \
+    net/disk_cache/hostres_plugin_bridge.cc
+
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH) \

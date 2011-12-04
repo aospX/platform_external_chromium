@@ -1,6 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved
-
+// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,6 +38,8 @@
 
 #include "net/disk_cache/stat_hub.h"
 #include "net/disk_cache/pp_proc_plugin_bridge.h"
+
+#include "net/disk_cache/hostres_plugin_bridge.h"
 
 namespace net {
 
@@ -1166,8 +1167,15 @@ void HttpCache::OnBackendCreated(int result, PendingOp* pending_op) {
                 stat_hub::StatHub::GetInstance()->RegisterProcessor(pp);
                 LOG(INFO) << "HttpCache::OnBackendCreated : StatHub PP plugin is registered.";
             }
-            if(stat_hub::StatHub::GetInstance()->Init(stat_db_path_->value(), MessageLoop::current())) {
-                LOG(INFO) << "HttpCache::OnBackendCreated : StatHub is ready.";
+            stat_hub::StatProcessor* hp = StatHubCreateHostResPlugin();
+            if (NULL!=hp) {
+                stat_hub::StatHub::GetInstance()->RegisterProcessor(hp);
+                LOG(INFO) << "HttpCache::OnBackendCreated HostStat created";
+            }
+
+            if(stat_hub::StatHub::GetInstance()->Init(stat_db_path_->value(), MessageLoop::current()))
+            {
+                LOG(INFO) << "HttpCache::OnBackendCreated 4";
             }
         }
     }

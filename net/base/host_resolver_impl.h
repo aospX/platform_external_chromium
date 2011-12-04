@@ -133,6 +133,7 @@ class HostResolverImpl : public HostResolver,
   // TODO(eroman): hack for http://crbug.com/15513
   virtual void Shutdown();
 
+  virtual void SetResolverExt(HostnameResolverExt* preresolver);
  private:
   class Job;
   class JobPool;
@@ -283,6 +284,7 @@ class HostResolverImpl : public HostResolver,
   NetLog* net_log_;
 
   MessageLoop* net_notification_messageloop_;
+  HostnameResolverExt* resolverext_;
 
   DISALLOW_COPY_AND_ASSIGN(HostResolverImpl);
 };

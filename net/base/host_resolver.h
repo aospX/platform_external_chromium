@@ -126,6 +126,13 @@ class HostResolver {
     virtual void OnCancelResolution(int id, const RequestInfo& info) = 0;
   };
 
+  class HostnameResolverExt {
+  public:
+      virtual ~HostnameResolverExt() {}
+      virtual void Resolve()=0;
+  };
+
+  virtual void SetResolverExt(HostnameResolverExt* preresolver) {};
   // Opaque type used to cancel a request.
   typedef void* RequestHandle;
 
