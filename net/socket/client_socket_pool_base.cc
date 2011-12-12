@@ -722,8 +722,8 @@ void ClientSocketPoolBaseHelper::DecrementIdleCount() {
 void ClientSocketPoolBaseHelper::OnCleanupTimerFired()
 {
   if(net_tcp_fin_aggr_feature_enabled_sys_property_ &&
-     (NULL != tcp_fin_aggregation) /*&&
-     (tcp_fin_aggregation->IsConnectedToWWAN())*/) {
+     (NULL != tcp_fin_aggregation) &&
+     (tcp_fin_aggregation->IsConnectedToWWAN())) {
     ReaperCleanupIdleSockets();
   }
   else {
