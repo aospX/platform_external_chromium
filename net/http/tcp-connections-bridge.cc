@@ -33,7 +33,6 @@
 #include <unistd.h>
 
 #include <string>
-#include <cutils/log.h>
 
 #include "base/compiler_specific.h"
 #include "net/http/http_response_headers.h"
@@ -72,6 +71,5 @@ void ObserveConnections(
 }
 
 void NetPreconnect(net::HttpNetworkSession* session, GURL const& url, int numOfConnections) {
-  SLOGD("NetPreconnect(): count = %d", numOfConnections);
   net::Preconnect::DoPreconnect(session, url, numOfConnections);
 }
