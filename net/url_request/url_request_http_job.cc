@@ -42,8 +42,7 @@
 #include "net/url_request/url_request_redirect_job.h"
 #include "net/url_request/url_request_throttler_header_adapter.h"
 #include "net/url_request/url_request_throttler_manager.h"
-
-extern void StatHubCmd(unsigned short cmd, const char* param1, const char* param2);
+#include "net/disk_cache/stat_hub_api.h"
 
 static const char kAvailDictionaryHeader[] = "Avail-Dictionary";
 
@@ -289,6 +288,9 @@ void URLRequestHttpJob::NotifyHeadersComplete() {
 
 void URLRequestHttpJob::NotifyDone(const URLRequestStatus& status) {
   RecordCompressionHistograms();
+  GURL& url = request_info_.url;
+  unsigned short url_len = url.spec().length();
+  StatHubCmd(INPUT_CMD_CH_URL_REQUEST_DONE, (void*)url.spec().c_str(), url_len+1, NULL, 0);
   URLRequestJob::NotifyDone(status);
 }
 
@@ -302,10 +304,7 @@ void URLRequestHttpJob::DestroyTransaction() {
 
 static void updateUrlRequest(const GURL& url, const std::string& headers) {
     unsigned short url_len = url.spec().length();
-
-    if (url_len && (url.SchemeIs("http") || url.SchemeIsSecure())) {
-        StatHubCmd(8, url.spec().c_str(), headers.c_str());
-    }
+    StatHubCmd(INPUT_CMD_CH_URL_REQUEST, (void*)url.spec().c_str(), url_len+1, (void*)headers.c_str(), headers.length()+1);
 }
 
 void URLRequestHttpJob::StartTransaction() {

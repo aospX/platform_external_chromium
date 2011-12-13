@@ -54,7 +54,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace stat_hub {
 
-#define FLUSH_DB_TIMEOUT_THRESHOLD_DEF  600000
+#define FLUSH_DB_TIMEOUT_THRESHOLD_DEF  30000
 
 typedef enum {
     INPUT_STATE_READ_MARKER,
@@ -69,6 +69,7 @@ const char* kPropNameDbpath = "stathub.dbpath";
 const char* kPropNameVerbose = "stathub.verbose";
 const char* kPropNameFlushDelay = "stathub.flushdelay";
 const char* kPropNameEnabledAppName = "stathub.appname";
+const char* kPropNamePlugin = "stathub.plugin";
 
 const char* kEnabledAppName = "com.android.browser";
 
@@ -94,10 +95,25 @@ StatHub::StatHub() :
     thread_(NULL),
     flush_delay_(FLUSH_DB_TIMEOUT_THRESHOLD_DEF),
     verbose_level_(STAT_HUB_VERBOSE_LEVEL_DISABLED) {
+
+    cmd_mask_ |= (1<<INPUT_CMD_WK_MMC_CLEAR);
+    cmd_mask_ |= (1<<INPUT_CMD_WK_MAIN_URL_LOADED);
 }
 
 StatHub::~StatHub() {
     Release();
+}
+
+bool StatHub::LoadPlugin(const char* name) {
+    if (IsVerboseEnabled()) {
+        LOG(INFO) << "StatHub::Init - Load plugin: " << name;
+    }
+    StatProcessorGenericPlugin* plugin = new StatProcessorGenericPlugin(name);
+    if( plugin->OpenPlugin()) {
+        RegisterProcessor(plugin);
+        return true;
+    }
+    return false;
 }
 
 void StatHub::RegisterProcessor(StatProcessor* processor) {
@@ -107,7 +123,27 @@ void StatHub::RegisterProcessor(StatProcessor* processor) {
     }
 }
 
-bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
+StatProcessor* StatHub::DeleteProcessor(StatProcessor* processor) {
+    if (NULL!=processor) {
+        StatProcessor* next = processor->next_;
+        if (first_processor_==processor) {
+            first_processor_ = next;
+        }
+        else {
+            for (StatProcessor* tmp_processor=first_processor_; tmp_processor!=NULL; tmp_processor=tmp_processor->next_ ) {
+                if (tmp_processor->next_==processor) {
+                    tmp_processor->next_=next;
+                    break;
+                }
+            }
+        }
+        delete processor;
+        return next;
+    }
+    return NULL;
+}
+
+bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop, net::HttpCache* http_cache) {
     char value[PROPERTY_VALUE_MAX] = {'\0'};
 
     if (ready_) {
@@ -116,7 +152,7 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
     }
 
     if (db_path.empty() || NULL==message_loop) {
-        LOG(INFO) << "StatHub::Init - Bad parameters";
+        LOG(ERROR) << "StatHub::Init - Bad parameters";
         return false;
     }
 
@@ -126,7 +162,7 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
         return false;
     }
 
-    property_get(kPropNameVerbose, value, "4"); //STAT_HUB_VERBOSE_LEVEL_DISABLED - 4
+    property_get(kPropNameVerbose, value, "0"); //STAT_HUB_VERBOSE_LEVEL_DISABLED - 0
     verbose_level_ = (StatHubVerboseLevel)atoi(value);
     if (IsVerboseEnabled()) {
         LOG(INFO) << "StatHub::Init - Verbose Level: " << verbose_level_;
@@ -151,7 +187,7 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
         LOG(INFO) << "CacheDatabase::Init - Prc Name: " << path << "(" << (int)pid << ")";
     }
     if (strcmp(path, enabled_app_name_.c_str())) {
-        LOG(INFO) << "StatHub::Init - App " << path << " isn't supported.";
+        LOG(ERROR) << "StatHub::Init - App " << path << " isn't supported.";
         return false;
     }
 
@@ -176,6 +212,7 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
     }
 
     message_loop_ = message_loop;
+    http_cache_ = http_cache;
 
     #if defined(NOT_NOW)
         db_->set_page_size(2048);
@@ -186,36 +223,64 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
     #endif //defined(NOT_NOW)
     db_ = new sql::Connection();
     if (!db_->Open(FilePath(db_path_.c_str()))) {
-        LOG(INFO) << "StatHub::Init - Unable to open DB " << db_path_.c_str();
+        LOG(ERROR) << "StatHub::Init - Unable to open DB " << db_path_.c_str();
         Release();
         return false;
     }
 
     // Scope initialization in a transaction so we can't be partially initialized.
     if (!StatHubBeginTransaction(db_)) {
-        LOG(INFO) << "StatHub::Init - Unable to start transaction";
+        LOG(ERROR) << "StatHub::Init - Unable to start transaction";
         Release();
         return false;
     }
 
     // Create tables.
     if (!InitTables()) {
-        LOG(INFO) << "StatHub::Init - Unable to initialize DB tables";
+        LOG(ERROR) << "StatHub::Init - Unable to initialize DB tables";
         Release();
         return false;
     }
 
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
+    //load mandatory plugins
+    LoadPlugin("pp_proc_plugin.so");
+    LoadPlugin("pageload_proc_plugin.so");
+
+#ifdef STAT_HUB_DYNAMIC_BIND_ON
+    //load arbitrary plugins
+    for(int index=1; ; index++) {
+        std::ostringstream index_str;
+        index_str << "." << index;
+        std::string plugin_prop_name = kPropNamePlugin + index_str.str();
+        property_get(plugin_prop_name.c_str(), value, "");
+        if (!value[0]) {
+            break;
+        }
+        LoadPlugin(value);
+    }
+#endif // STAT_HUB_DYNAMIC_BIND_ON
+
+    std::string proc_name;
+    for (StatProcessor* processor=first_processor_; processor!=NULL;) {
+        if (!processor->OnGetProcName(proc_name)) {
+            proc_name = "Undefined";
+        }
         if(!processor->OnInit(db_, message_loop_)) {
-            LOG(INFO) << "StatHub::Init - One of the processors failed to initialize";
-            Release();
-            return false;
+            LOG(INFO) << "StatHub::Init - processor " << proc_name.c_str() << " initialization failed!";
+            processor = DeleteProcessor(processor);
+        } else {
+            LOG(INFO) << "StatHub::Init - processor " << proc_name.c_str() << " is ready.";
+            unsigned int cmd_mask;
+            if (processor->OnGetCmdMask(cmd_mask)) {
+                cmd_mask_ |= cmd_mask;
+            }
+            processor=processor->next_ ;
         }
     }
 
     // Initialization is complete.
     if (!StatHubCommitTransaction(db_)) {
-        LOG(INFO) << "StatHub::Init - Unable to commist transaction";
+        LOG(ERROR) << "StatHub::Init - Unable to commist transaction";
         Release();
         return false;
     }
@@ -226,14 +291,14 @@ bool StatHub::Init(const std::string& db_path, MessageLoop* message_loop) {
 
     thread_ = new base::Thread("event_handler");
     if (!thread_->StartWithOptions(base::Thread::Options(MessageLoop::TYPE_IO, 0))) {
-        LOG(INFO) << "StatHub::Init event thread start error";
+        LOG(ERROR) << "StatHub::Init event thread start error";
         Release();
         return false;
     }
 
     ready_ = true;
     if(IsVerboseEnabled()) {
-        LOG(INFO) << "StatHub::Init: Init DB Time: " << StatHubGetTimeDeltaInMs(start);
+        LOG(INFO) << "StatHub::Init: Init DB Time: " << StatHubGetTimeDeltaInMs(start, StatHubGetSystemTime());
     }
     return true;
 }
@@ -310,70 +375,33 @@ bool StatHub::SetDBmetaData(const char* key, const char* val) {
     return ret;
 }
 
-void StatHub::UpdateMainUrl(const char* url) {
-    flush_db_required_ = false;
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-        processor->OnUpdateMainUrl(url);
-    }
-}
-
-void StatHub::UpdateSubUrl(const char* main_url,const char* sub_url) {
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-        processor->OnUpdateSubUrl(main_url, sub_url);
-    }
-}
-
-void StatHub::UrlRemovedFromMMCache(unsigned int hash) {
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-        processor->OnUrlRemovedFromMMCache(hash);
-    }
-}
-
-void StatHub::UrlAddedToMMCache(unsigned int hash) {
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-        processor->OnUrlAddedToMMCache(hash);
-    }
-}
-
-void StatHub::MainUrlLoaded() {
-    bool immediate_flush_requered = false;
-
-    for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-        immediate_flush_requered|=processor->OnMainUrlLoaded();
-    }
-
+void StatHub::MainUrlLoaded(const char* url) {
     flush_db_request_time_ = StatHubGetSystemTime();
-    if (immediate_flush_requered) {
-        flush_db_required_ = false;
+    flush_db_required_ = true;
+    if (!flush_db_scheduled_) {
+        flush_db_scheduled_ = true;
         if(IsVerboseEnabled()) {
-            LOG(INFO) << "CacheDatabase::MainUrlLoaded : Force DB flush";
+            LOG(INFO) << "CacheDatabase::MainUrlLoaded : Request DB flush (" << flush_delay_ << ")";
         }
-        FlushDB();
-    }
-    else {
-        flush_db_required_ = true;
-        if (!flush_db_scheduled_) {
-            flush_db_scheduled_ = true;
-            if(IsVerboseEnabled()) {
-                LOG(INFO) << "CacheDatabase::MainUrlLoaded : Request DB flush (" << flush_delay_ << ")";
-            }
-            message_loop_->PostDelayedTask(FROM_HERE, NewRunnableFunction(&DoFlushDB, this), flush_delay_);
-        }
+        message_loop_->PostDelayedTask(FROM_HERE, NewRunnableFunction(&DoFlushDB, this), flush_delay_);
     }
 }
 
-void StatHub::Cmd(unsigned short cmd, const char* param1, const char* param2) {
+void StatHub::Cmd(StatHubTimeStamp timestamp, unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2) {
     switch (cmd) {
-        case INPUT_CMD_CLEAR:
+        case INPUT_CMD_WK_MMC_CLEAR:
             for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
                 processor->OnClearDb(db_);
             }
             break;
         default:
             for (StatProcessor* processor=first_processor_; processor!=NULL; processor=processor->next_ ) {
-                processor->OnCmd(cmd, param1, param2);
+                processor->OnCmd(timestamp, cmd, param1, sizeofparam1, param2, sizeofparam2);
             }
             break;
+    }
+    if (INPUT_CMD_WK_MAIN_URL_LOADED==cmd) {
+        MainUrlLoaded((const char*)param1);
     }
 }
 
@@ -382,7 +410,7 @@ void StatHub::FlushDBrequest() {
         LOG(INFO) << "StatHub::FlushDBrequest : Start";
     }
 
-    int delta = StatHubGetTimeDeltaInMs(flush_db_request_time_);
+    int delta = StatHubGetTimeDeltaInMs(flush_db_request_time_, StatHubGetSystemTime());
     flush_db_scheduled_ = false;
     if (flush_db_required_) {
         if(IsVerboseEnabled()) {
@@ -415,7 +443,7 @@ bool StatHub::FlushDB() {
     }
 
     if(IsVerboseEnabled()) {
-        LOG(INFO) << "StatHub::FlushDB time :" << StatHubGetTimeDeltaInMs(start);
+        LOG(INFO) << "StatHub::FlushDB time :" << StatHubGetTimeDeltaInMs(start, StatHubGetSystemTime());
     }
     return true;
 }

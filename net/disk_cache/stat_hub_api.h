@@ -36,36 +36,26 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "app/sql/connection.h"
 #include "app/sql/statement.h"
 #include "net/http/http_cache.h"
+#include "stat_hub_cmd_api.h"
 
 #define PROP_VAL_TO_STR(val) PROP_VAL_TO_STR_HELPER(val)
 #define PROP_VAL_TO_STR_HELPER(val) #val
 #define STAT_MAX_PARAM_LEN  2048
 
-#define STAT_HUB_IS_VERBOSE_LEVEL_ERROR     (StatHubGetVerboseLevel()<=STAT_HUB_VERBOSE_LEVEL_ERROR)
-#define STAT_HUB_IS_VERBOSE_LEVEL_WARNING   (StatHubGetVerboseLevel()<=STAT_HUB_VERBOSE_LEVEL_WARNING)
-#define STAT_HUB_IS_VERBOSE_LEVEL_INFO      (StatHubGetVerboseLevel()<=STAT_HUB_VERBOSE_LEVEL_INFO)
-#define STAT_HUB_IS_VERBOSE_LEVEL_DEBUG     (StatHubGetVerboseLevel()<=STAT_HUB_VERBOSE_LEVEL_DEBUG)
-
-typedef enum {
-    INPUT_CMD_MAIN_URL = 1,
-    INPUT_CMD_SUB_URL_REQUEST,      // 2
-    INPUT_CMD_URL_REMOVE,           // 3
-    INPUT_CMD_MAIN_URL_LOADED,      // 4
-    INPUT_CMD_URL_ADD,              // 5
-    INPUT_CMD_CLEAR,                // 6
-    INPUT_CMD_FLUSH_DB,             // 7
-    INPUT_CMD_URL_REQUEST,          // 8
-    INPUT_CMD_CACHEABLE,            // 9
-} StatHubInputCmd;
+#define STAT_HUB_IS_VERBOSE_LEVEL_ERROR     (StatHubGetVerboseLevel()>=STAT_HUB_VERBOSE_LEVEL_ERROR)
+#define STAT_HUB_IS_VERBOSE_LEVEL_WARNING   (StatHubGetVerboseLevel()>=STAT_HUB_VERBOSE_LEVEL_WARNING)
+#define STAT_HUB_IS_VERBOSE_LEVEL_INFO      (StatHubGetVerboseLevel()>=STAT_HUB_VERBOSE_LEVEL_INFO)
+#define STAT_HUB_IS_VERBOSE_LEVEL_DEBUG     (StatHubGetVerboseLevel()>=STAT_HUB_VERBOSE_LEVEL_DEBUG)
 
 typedef enum StatHubVerboseLevel {
-    STAT_HUB_VERBOSE_LEVEL_ERROR,   // 0
-    STAT_HUB_VERBOSE_LEVEL_WARNING, // 1
-    STAT_HUB_VERBOSE_LEVEL_INFO,    // 2
-    STAT_HUB_VERBOSE_LEVEL_DEBUG,   // 3
-    STAT_HUB_VERBOSE_LEVEL_DISABLED // 4
+    STAT_HUB_VERBOSE_LEVEL_DISABLED,// 0
+    STAT_HUB_VERBOSE_LEVEL_ERROR,   // 1
+    STAT_HUB_VERBOSE_LEVEL_WARNING, // 2
+    STAT_HUB_VERBOSE_LEVEL_INFO,    // 3
+    STAT_HUB_VERBOSE_LEVEL_DEBUG    // 4
 } StatHubVerboseLevel;
 
+typedef base::Time StatHubTimeStamp;
 class MessageLoop;
 
 extern bool StatHubIsVerboseEnabled()
@@ -74,21 +64,19 @@ extern StatHubVerboseLevel StatHubGetVerboseLevel()
     __attribute__ ((visibility ("default"), used));
 extern base::Time StatHubGetSystemTime()
     __attribute__ ((visibility ("default"), used));
-extern int StatHubGetTimeDeltaInMs(base::Time& start_time)
+extern int StatHubGetTimeDeltaInMs(const base::Time& start_time, const base::Time& finish_time)
     __attribute__ ((visibility ("default"), used));
 extern const char* StatHubGetHostFromUrl(std::string& url, std::string& host)
-    __attribute__ ((visibility ("default"), used));
-extern uint32 StatHubHash(const char* str)
     __attribute__ ((visibility ("default"), used));
 extern void StatHubPreconnect(MessageLoop* message_loop, net::HttpCache* cache, const char* url, uint32 count)
     __attribute__ ((visibility ("default"), used));
 extern void StatHubFetch(MessageLoop* message_loop, net::HttpCache* cache, const char* url, const char* headers)
     __attribute__ ((visibility ("default"), used));
-extern int StatHubGetSysProp(const char* name, char* val, const char* def)
-    __attribute__ ((visibility ("default"), used));
 extern bool StatHubGetDBmetaData(const char* key, std::string& val)
     __attribute__ ((visibility ("default"), used));
 extern bool StatHubSetDBmetaData(const char* key, const char* val)
+    __attribute__ ((visibility ("default"), used));
+extern net::HttpCache* StatHubGetHttpCache()
     __attribute__ ((visibility ("default"), used));
 
 // ================================ StatHub SQL Interface ====================================
@@ -125,22 +113,6 @@ extern bool StatHubStatementBindInt64(sql::Statement* st, int col, int64 val)
 extern bool StatHubStatementBindBool(sql::Statement* st, int col, bool val)
     __attribute__ ((visibility ("default"), used));
 extern bool StatHubStatementBindCString(sql::Statement* st, int col, const char* val)
-    __attribute__ ((visibility ("default"), used));
-
-// ================================ StatHub Functional Interface ====================================
-extern void StatHubUpdateMainUrl(const char* main_url)
-    __attribute__ ((visibility ("default"), used));
-extern void StatHubUpdateUrlRequest(const char* url, const char* headers)
-    __attribute__ ((visibility ("default"), used));
-extern unsigned int StatHubUpdateSubUrl(const char* main_url, const char* sub_url)
-    __attribute__ ((visibility ("default"), used));
-extern void StatHubUrlRemovedFromMMCache(unsigned int hash)
-    __attribute__ ((visibility ("default"), used));
-extern void StatHubUrlAddedToMMCache(unsigned int hash)
-    __attribute__ ((visibility ("default"), used));
-extern void StatHubMainUrlLoaded()
-    __attribute__ ((visibility ("default"), used));
-extern void StatHubCmd(unsigned short cmd, const char* param1, const char* param2)
     __attribute__ ((visibility ("default"), used));
 
 #endif /* STAT_HUB_API_H_ */

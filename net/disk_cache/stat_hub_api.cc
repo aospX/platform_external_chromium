@@ -179,8 +179,8 @@ base::Time StatHubGetSystemTime() {
     return base::Time::NowFromSystemTime();
 }
 
-int StatHubGetTimeDeltaInMs(base::Time& start_time) {
-    base::TimeDelta delta = StatHubGetSystemTime() - start_time;
+int StatHubGetTimeDeltaInMs(const base::Time& start_time, const base::Time& finish_time) {
+    base::TimeDelta delta = finish_time - start_time;
     return (int)delta.InMilliseconds(); //int64
 }
 
@@ -190,7 +190,7 @@ const char* StatHubGetHostFromUrl(std::string& url, std::string& host) {
     return host.c_str();
 }
 
-uint32 StatHubHash(const char* str) {
+unsigned int StatHubHash(const char* str) {
     return disk_cache::Hash(str, strlen(str));
 }
 
@@ -202,16 +202,16 @@ void StatHubFetch(MessageLoop* message_loop, net::HttpCache* cache, const char* 
     message_loop->PostTask(FROM_HERE, NewRunnableFunction(&DoFetch, cache, new std::string(url), new std::string(headers)));
 }
 
-extern int StatHubGetSysProp(const char* name, char* val, const char* def) {
-    return property_get(name, val, def);
-}
-
 bool StatHubGetDBmetaData(const char* key, std::string& val) {
     return stat_hub::StatHub::GetInstance()->GetDBmetaData(key, val);
 }
 
 bool StatHubSetDBmetaData(const char* key, const char* val) {
     return stat_hub::StatHub::GetInstance()->SetDBmetaData(key, val);
+}
+
+net::HttpCache* StatHubGetHttpCache() {
+    return stat_hub::StatHub::GetInstance()->GetHttpCache();
 }
 
 // ================================ StatHub SQL Interface ====================================
@@ -323,89 +323,53 @@ bool StatHubStatementBindCString(sql::Statement* st, int col, const char* val) {
 
 // ============================ StatHub Functional Interface Proxies ===============================
 
-static void UpdateMainUrlProxy(std::string* main_url) {
-    if (NULL!=main_url) {
-        stat_hub::StatHub::GetInstance()->UpdateMainUrl(main_url->c_str());
-        delete main_url;
+void CmdProxy(StatHubTimeStamp timestamp, unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2) {
+    stat_hub::StatHub::GetInstance()->Cmd(timestamp, cmd, param1, sizeofparam1, param2, sizeofparam2);
+    if (sizeofparam1) {
+        delete (char*)param1;
     }
-}
-
-static void UpdateSubUrlProxy(std::string* main_url, std::string* sub_url) {
-    if (NULL!=main_url && NULL!=sub_url) {
-        stat_hub::StatHub::GetInstance()->UpdateSubUrl(main_url->c_str(), sub_url->c_str());
-        delete main_url;
-        delete sub_url;
-    }
-}
-
-static void UrlRemovedFromMMCacheProxy(unsigned int hash) {
-    stat_hub::StatHub::GetInstance()->UrlRemovedFromMMCache(hash);
-}
-
-static void UrlAddedToMMCacheProxy(unsigned int hash) {
-    stat_hub::StatHub::GetInstance()->UrlAddedToMMCache(hash);
-}
-
-static void MainUrlLoadedProxy() {
-    stat_hub::StatHub::GetInstance()->MainUrlLoaded();
-}
-
-void CmdProxy(unsigned short cmd, std::string* param1, std::string* param2) {
-    if (NULL!=param1 && NULL!=param2) {
-        stat_hub::StatHub::GetInstance()->Cmd(cmd, param1->c_str(), param2->c_str());
-        delete param1;
-        delete param2;
+    if (sizeofparam2) {
+        delete (char*)param2;
     }
 }
 
 // ================================ StatHub Functional Interface ====================================
+void StatHubCmd(unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2){
+    unsigned int cmd_mask = stat_hub::StatHub::GetInstance()->GetCmdMask();
 
-void StatHubUpdateMainUrl(const char* main_url) {
-    if(NULL!=main_url) {
+    if (cmd>INPUT_CMD_USER_DEFINED || (cmd_mask&(1<<cmd))) {
+        // create persistence storage to safely pass data to another thread
+        char* tmp_param1 = (char*)param1;
+        char* tmp_param2 = (char*)param2;
+        if (sizeofparam1) {
+            tmp_param1 = new char[sizeofparam1];
+            memcpy(tmp_param1, param1, sizeofparam1);
+        }
+        if (sizeofparam2) {
+            tmp_param2 = new char[sizeofparam2];
+            memcpy(tmp_param2, param2, sizeofparam2);
+        }
         if (stat_hub::StatHub::GetInstance()->IsReady()) {
             stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-                &UpdateMainUrlProxy, new std::string(main_url)));
+                &CmdProxy, base::Time::NowFromSystemTime(), cmd, (void*)tmp_param1, sizeofparam1, (void*)tmp_param2, sizeofparam2));
         }
     }
 }
 
-unsigned int StatHubUpdateSubUrl(const char* main_url, const char* sub_url) {
+void StatHubUpdateMainUrl(const char* url) {
+    if(NULL!=url) {
+        StatHubCmd(INPUT_CMD_WK_MAIN_URL, (void*)url, strlen(url)+1, NULL, 0);
+    }
+}
+
+void StatHubUpdateSubUrl(const char* main_url, const char* sub_url) {
     if(NULL!=main_url && NULL!=sub_url) {
-        if (stat_hub::StatHub::GetInstance()->IsReady()) {
-            stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-                &UpdateSubUrlProxy, new std::string(main_url), new std::string(sub_url)));
-        }
-        return StatHubHash(sub_url);
-    }
-    return 0;
-}
-
-void StatHubUrlRemovedFromMMCache(unsigned int hash) {
-    if (stat_hub::StatHub::GetInstance()->IsReady()) {
-        stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-            &UrlRemovedFromMMCacheProxy, hash));
+        StatHubCmd(INPUT_CMD_WK_SUB_URL_REQUEST, (void*)main_url, strlen(main_url)+1, (void*)sub_url, strlen(sub_url)+1);
     }
 }
 
-void StatHubUrlAddedToMMCache(unsigned int hash) {
-    if (stat_hub::StatHub::GetInstance()->IsReady()) {
-        stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-            &UrlAddedToMMCacheProxy, hash));
-    }
-}
-
-void StatHubMainUrlLoaded() {
-    if (stat_hub::StatHub::GetInstance()->IsReady()) {
-        stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-            &MainUrlLoadedProxy));
-    }
-}
-
-void StatHubCmd(unsigned short cmd, const char* param1, const char* param2) {
-    if(NULL!=param1 && NULL!=param2) {
-        if (stat_hub::StatHub::GetInstance()->IsReady()) {
-            stat_hub::StatHub::GetInstance()->GetThread()->message_loop()->PostTask( FROM_HERE, NewRunnableFunction(
-                &CmdProxy, cmd, new std::string(param1), new std::string(param2)));
-        }
+void StatHubMainUrlLoaded(const char* url) {
+    if(NULL!=url) {
+        StatHubCmd(INPUT_CMD_WK_MAIN_URL_LOADED, (void*)url, strlen(url)+1, NULL, 0);
     }
 }

@@ -31,9 +31,9 @@
 #include "net/host_resolver_helper/dyn_lib_loader.h"
 #include "base/logging.h"
 
-class HostResProcessor : public stat_hub::StatProcessorPlugin<HostResProcessor> {
+class HostResProcessor : public stat_hub::StatProcessorGenericPlugin {
 public:
-    HostResProcessor() {
+    HostResProcessor(const char* name):StatProcessorGenericPlugin(name) {
     }
 
     virtual ~HostResProcessor() {
@@ -43,41 +43,26 @@ private:
     DISALLOW_COPY_AND_ASSIGN(HostResProcessor);
 };
 
-//Standard Interface
-STAT_PROC_IF_IMPL_ON_INIT(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_FETCH_DB(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_FLUSH_DB(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_CLEAR_DB(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_UPDATE_MAIN_URL(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_UPDATE_SUB_URL(HostResProcessor, true);
-STAT_PROC_IF_IMPL_ON_MMC_URL_REMOVED(HostResProcessor, false);
-STAT_PROC_IF_IMPL_ON_MMC_URL_ADDED(HostResProcessor, false);
-STAT_PROC_IF_IMPL_ON_MAIN_URL_LOADED(HostResProcessor, false);
-STAT_PROC_IF_IMPL_ON_CMD(HostResProcessor, false);
-
-
 const char* hostres_plugin_name = "libdnshostprio.so";
 
 stat_hub::StatProcessor* StatHubCreateHostResPlugin()
 {
-    LOG(INFO) << "StatHubCreateHostResPlugin called";
     static bool initialized = false;
     if (!initialized) {
         LOG(INFO) << "StatHubCreateHostResPlugin initializing...";
         initialized = true;
-        HostResProcessor* hp = new HostResProcessor();
+        HostResProcessor* hp = new HostResProcessor(hostres_plugin_name);
         void* fh = LibraryManager::GetLibraryHandle(hostres_plugin_name);
         if (fh) {
             LOG(INFO) << "StatHubCreateHostResPlugin lib loaded";
             const char* fn = NULL;
-            const char* dll_ok = NULL;
+            bool dll_ok = false;
 
             dll_ok = hp->OpenPlugin(fh);
-            if (NULL==dll_ok) {
+            if (dll_ok) {
                 LOG(INFO) << "StatHubCreateHostResPlugin plugin connected";;
                 return hp;
             }
-            LOG(INFO) << "Method " << dll_ok << " isn't found in plugin: " << hostres_plugin_name;
         }
         else {
             LOG(INFO) << "Failed to open plugin:" << hostres_plugin_name;

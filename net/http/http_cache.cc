@@ -37,8 +37,6 @@
 #include "net/socket/ssl_host_info.h"
 
 #include "net/disk_cache/stat_hub.h"
-#include "net/disk_cache/pp_proc_plugin_bridge.h"
-
 #include "net/disk_cache/hostres_plugin_bridge.h"
 
 namespace net {
@@ -1162,20 +1160,13 @@ void HttpCache::OnBackendCreated(int result, PendingOp* pending_op) {
     item->NotifyTransaction(result, NULL);
     if (NULL!=stat_db_path_) {
         if(!stat_hub::StatHub::GetInstance()->IsReady()) {
-            stat_hub::StatProcessor* pp = StatHubCreatePpProc(this);
-            if (NULL!=pp) {
-                stat_hub::StatHub::GetInstance()->RegisterProcessor(pp);
-                LOG(INFO) << "HttpCache::OnBackendCreated : StatHub PP plugin is registered.";
-            }
             stat_hub::StatProcessor* hp = StatHubCreateHostResPlugin();
             if (NULL!=hp) {
                 stat_hub::StatHub::GetInstance()->RegisterProcessor(hp);
                 LOG(INFO) << "HttpCache::OnBackendCreated HostStat created";
             }
-
-            if(stat_hub::StatHub::GetInstance()->Init(stat_db_path_->value(), MessageLoop::current()))
-            {
-                LOG(INFO) << "HttpCache::OnBackendCreated 4";
+            if(stat_hub::StatHub::GetInstance()->Init(stat_db_path_->value(), MessageLoop::current(), this)) {
+                LOG(INFO) << "HttpCache::OnBackendCreated : StatHub is ready.";
             }
         }
     }

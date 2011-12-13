@@ -27,15 +27,38 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -----------------------------------------------------------------------------**/
 
-#ifndef PP_PROC_PLUGIN_BRIDGE_H_
-#define PP_PROC_PLUGIN_BRIDGE_H_
+#ifndef STAT_HUB_CMD_API_H_
+#define STAT_HUB_CMD_API_H_
 
-#include "net/http/http_cache.h"
+typedef enum {
+    INPUT_CMD_TBD_0,                // 0 TBD
+    INPUT_CMD_WK_MAIN_URL,          // 1
+    INPUT_CMD_WK_SUB_URL_REQUEST,   // 2
+    INPUT_CMD_TBD_3,                // 3 TBD
+    INPUT_CMD_WK_MAIN_URL_LOADED,   // 4
+    INPUT_CMD_WK_RES_MMC_STATUS,    // 5
+    INPUT_CMD_WK_MMC_CLEAR,         // 6
+    INPUT_CMD_TBD_7,                // 7 TBD
+    INPUT_CMD_CH_URL_REQUEST,       // 8
+    INPUT_CMD_WK_RES_LOAD_FINISHED, // 9
+    INPUT_CMD_WK_START_PAGE_LOAD,   // 10
+    INPUT_CMD_WK_FINISH_PAGE_LOAD,  // 11
+    INPUT_CMD_TBD_12,               // 12 TBD
+    INPUT_CMD_CH_URL_REQUEST_DONE,  // 13
 
-namespace stat_hub {
-    class StatProcessor;
-}
+    INPUT_CMD_USER_DEFINED = 32     // 256
+} StatHubInputCmd;
 
-extern stat_hub::StatProcessor* StatHubCreatePpProc(net::HttpCache* cache);
+// ================================ StatHub CMD Interface ====================================
+extern unsigned int StatHubHash(const char* str)
+    __attribute__ ((visibility ("default"), used));
+extern void StatHubUpdateMainUrl(const char* url)
+    __attribute__ ((visibility ("default"), used));
+extern void StatHubUpdateSubUrl(const char* main_url, const char* sub_url)
+    __attribute__ ((visibility ("default"), used));
+extern void StatHubMainUrlLoaded(const char* url)
+    __attribute__ ((visibility ("default"), used));
+extern void StatHubCmd(unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2)
+    __attribute__ ((visibility ("default"), used));
 
-#endif /* PP_PROC_PLUGIN_BRIDGE_H_ */
+#endif /* STAT_HUB_CMD_API_H_ */

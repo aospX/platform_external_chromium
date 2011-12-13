@@ -49,77 +49,6 @@ namespace stat_hub {
 
 typedef void(* event_cb)(int fd, short event, void* arg);
 
-#define STAT_PROC_IF_IMPL_0(owner, name, on, ret) \
-    bool owner::name##_ok_ = on; \
-    ret (*owner::Do##name)() = NULL;
-
-#define STAT_PROC_IF_IMPL_1(owner, name, on , ret, type1, param1) \
-    bool owner::name##_ok_ = on; \
-    ret (*owner::Do##name)(type1 param1) = NULL;
-
-#define STAT_PROC_IF_IMPL_2(owner, name, on , ret, type1, param1, type2, param2) \
-    bool owner::name##_ok_ = on; \
-    ret (*owner::Do##name)(type1 param1, type2 param2) = NULL;
-
-#define STAT_PROC_IF_IMPL_3(owner, name, on , ret, type1, param1, type2, param2, type3, param3) \
-    bool owner::name##_ok_ = on; \
-    ret (*owner::Do##name)(type1 param1, type2 param2, type3 param3) = NULL;
-
-#define STAT_PROC_IF_IMPL_TP_0(owner, name, on, ret) \
-    template<> bool stat_hub::StatProcessorPlugin<owner>::name##_ok_ = on; \
-    template<> ret (*stat_hub::StatProcessorPlugin<owner>::Do##name)() = NULL;
-
-#define STAT_PROC_IF_IMPL_TP_1(owner, name, on , ret, type1, param1) \
-    template<> bool stat_hub::StatProcessorPlugin<owner>::name##_ok_ = on; \
-    template<> ret (*stat_hub::StatProcessorPlugin<owner>::Do##name)(type1 param1) = NULL;
-
-#define STAT_PROC_IF_IMPL_TP_2(owner, name, on , ret, type1, param1, type2, param2) \
-    template<> bool stat_hub::StatProcessorPlugin<owner>::name##_ok_ = on; \
-    template<> ret (*stat_hub::StatProcessorPlugin<owner>::Do##name)(type1 param1, type2 param2) = NULL;
-
-#define STAT_PROC_IF_IMPL_TP_3(owner, name, on , ret, type1, param1, type2, param2, type3, param3) \
-    template<> bool stat_hub::StatProcessorPlugin<owner>::name##_ok_ = on; \
-    template<> ret (*stat_hub::StatProcessorPlugin<owner>::Do##name)(type1 param1, type2 param2, type3 param3) = NULL;
-
-#define STAT_PROC_IF_IMPL_ON_INIT(owner, on)                STAT_PROC_IF_IMPL_TP_2(owner, OnInit, on, bool, sql::Connection*, db, MessageLoop*, message_loop)
-#define STAT_PROC_IF_IMPL_ON_FETCH_DB(owner, on)            STAT_PROC_IF_IMPL_TP_1(owner, OnFetchDb, on, bool, sql::Connection*, db)
-#define STAT_PROC_IF_IMPL_ON_FLUSH_DB(owner, on)            STAT_PROC_IF_IMPL_TP_1(owner, OnFlushDb, on, bool, sql::Connection*, db)
-#define STAT_PROC_IF_IMPL_ON_CLEAR_DB(owner, on)            STAT_PROC_IF_IMPL_TP_1(owner, OnClearDb, on, bool, sql::Connection*, db)
-#define STAT_PROC_IF_IMPL_ON_UPDATE_MAIN_URL(owner, on)     STAT_PROC_IF_IMPL_TP_1(owner, OnUpdateMainUrl, on, bool, const char*, main_url)
-#define STAT_PROC_IF_IMPL_ON_UPDATE_SUB_URL(owner, on)      STAT_PROC_IF_IMPL_TP_2(owner, OnUpdateSubUrl, on, bool, const char*, main_url, const char*, sub_url)
-#define STAT_PROC_IF_IMPL_ON_MMC_URL_REMOVED(owner, on)     STAT_PROC_IF_IMPL_TP_1(owner, OnUrlRemovedFromMMCache, on, bool, unsigned int, hash)
-#define STAT_PROC_IF_IMPL_ON_MMC_URL_ADDED(owner, on)       STAT_PROC_IF_IMPL_TP_1(owner, OnUrlAddedToMMCache, on, bool, unsigned int, hash)
-#define STAT_PROC_IF_IMPL_ON_MAIN_URL_LOADED(owner, on)     STAT_PROC_IF_IMPL_TP_0(owner, OnMainUrlLoaded, on, bool)
-#define STAT_PROC_IF_IMPL_ON_CMD(owner, on)                 STAT_PROC_IF_IMPL_TP_3(owner, OnCmd, on, bool, unsigned short, cmd, const char*, param1, const char*, param2)
-
-#define STAT_BRIDGE_METHOD_0(name, ret) \
-    static bool name##_ok_; \
-    static ret (*Do##name)(); \
-    virtual ret name() { if(NULL!=Do##name) return Do##name(); return (ret)0;} \
-
-#define STAT_BRIDGE_METHOD_1(name, ret, type1, param1) \
-    static bool name##_ok_; \
-    static ret (*Do##name)(type1 param1); \
-    virtual ret name(type1 param1) { if(NULL!=Do##name) return Do##name(param1); return (ret)0;} \
-
-#define STAT_BRIDGE_METHOD_2(name, ret, type1, param1, type2, param2) \
-    static bool name##_ok_; \
-    static ret (*Do##name)(type1 param1, type2 param2); \
-    virtual ret name(type1 param1,type2 param2) { if(NULL!=Do##name) return Do##name(param1, param2); return (ret)0;} \
-
-#define STAT_BRIDGE_METHOD_3(name, ret, type1, param1, type2, param2, type3, param3) \
-    static bool name##_ok_; \
-    static ret (*Do##name)(type1 param1, type2 param2, type3 param3); \
-    virtual ret name(type1 param1,type2 param2,type3 param3) { if(NULL!=Do##name) return Do##name(param1, param2, param3); return (ret)0;} \
-
-#define STAT_PROC_IMPORT(handle, name) \
-    if(name##_ok_) { \
-        *(void **)(&Do##name) = dlsym(handle, #name); \
-        if (NULL==Do##name) { \
-            dll_ok = #name; \
-        } \
-    }
-
 class StatProcessor {
 public:
     StatProcessor(): next_(NULL){
@@ -133,12 +62,9 @@ virtual bool OnInit(sql::Connection* db, MessageLoop* message_loop)=0;
 virtual bool OnFetchDb(sql::Connection* db)=0;
 virtual bool OnFlushDb(sql::Connection* db)=0;
 virtual bool OnClearDb(sql::Connection* db)=0;
-virtual bool OnUpdateMainUrl(const char* main_url) {return true;}
-virtual bool OnUpdateSubUrl(const char* main_url, const char* sub_url) {return true;}
-virtual bool OnUrlRemovedFromMMCache(unsigned int hash) {return true;}
-virtual bool OnUrlAddedToMMCache(unsigned int hash) {return true;}
-virtual bool OnMainUrlLoaded() {return false; }
-virtual bool OnCmd(unsigned short cmd, const char* param1, const char* param2) {return false; }
+virtual bool OnCmd(StatHubTimeStamp timestamp, unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2) {return false;}
+virtual bool OnGetProcName(std::string& name)=0;
+virtual bool OnGetCmdMask(unsigned int& cmd_mask)=0;
 
 private:
     friend class StatHub;
@@ -146,42 +72,98 @@ private:
     StatProcessor* next_;
 };
 
-template <class T>
-class StatProcessorPlugin : public StatProcessor {
+#define STAT_PLUGIN_METHOD_0(name, ret) \
+    ret (*Do##name)(); \
+    virtual ret name() { if(NULL!=Do##name) return Do##name(); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_1(name, ret, type1, param1) \
+    ret (*Do##name)(type1 param1); \
+    virtual ret name(type1 param1) { if(NULL!=Do##name) return Do##name(param1); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_2(name, ret, type1, param1, type2, param2) \
+    ret (*Do##name)(type1 param1, type2 param2); \
+    virtual ret name(type1 param1,type2 param2) { if(NULL!=Do##name) return Do##name(param1, param2); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_3(name, ret, type1, param1, type2, param2, type3, param3) \
+    ret (*Do##name)(type1 param1, type2 param2, type3 param3); \
+    virtual ret name(type1 param1,type2 param2,type3 param3) \
+        { if(NULL!=Do##name) return Do##name(param1, param2, param3); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_4(name, ret, type1, param1, type2, param2, type3, param3, type4, param4) \
+    ret (*Do##name)(type1 param1, type2 param2, type3 param3, type4 param4); \
+    virtual ret name(type1 param1,type2 param2,type3 param3, type4 param4) \
+        { if(NULL!=Do##name) return Do##name(param1, param2, param3, param4); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_5(name, ret, type1, param1, type2, param2, type3, param3, type4, param4, type5, param5) \
+    ret (*Do##name)(type1 param1, type2 param2, type3 param3, type4 param4, type5 param5); \
+    virtual ret name(type1 param1,type2 param2,type3 param3, type4 param4, type5 param5) \
+        { if(NULL!=Do##name) return Do##name(param1, param2, param3, param4, param5); return (ret)0;}
+
+#define STAT_PLUGIN_METHOD_6(name, ret, type1, param1, type2, param2, type3, param3, type4, param4, type5, param5, type6, param6) \
+    ret (*Do##name)(type1 param1, type2 param2, type3 param3, type4 param4, type5 param5, type6 param6); \
+    virtual ret name(type1 param1,type2 param2,type3 param3, type4 param4, type5 param5, type6 param6) \
+        { if(NULL!=Do##name) return Do##name(param1, param2, param3, param4, param5, param6); return (ret)0;}
+
+#define STAT_PLUGIN_IF_DEFINE(name) \
+    Do##name = NULL;
+
+#define STAT_PLUGIN_IMPORT(handle, name) \
+    *(void **)(&Do##name) = dlsym(handle, #name);
+
+class StatProcessorGenericPlugin : public StatProcessor {
 public:
-    StatProcessorPlugin(){
-    }
-
-virtual ~StatProcessorPlugin() {
-    }
-
-    STAT_BRIDGE_METHOD_2(OnInit, bool, sql::Connection*, db, MessageLoop*, message_loop)
-    STAT_BRIDGE_METHOD_1(OnFetchDb, bool, sql::Connection*, db)
-    STAT_BRIDGE_METHOD_1(OnFlushDb, bool, sql::Connection*, db)
-    STAT_BRIDGE_METHOD_1(OnClearDb, bool, sql::Connection*, db)
-    STAT_BRIDGE_METHOD_1(OnUpdateMainUrl, bool, const char*, main_url)
-    STAT_BRIDGE_METHOD_2(OnUpdateSubUrl, bool, const char*, main_url, const char*, sub_url)
-    STAT_BRIDGE_METHOD_1(OnUrlRemovedFromMMCache, bool, unsigned int, hash)
-    STAT_BRIDGE_METHOD_1(OnUrlAddedToMMCache, bool, unsigned int, hash)
-    STAT_BRIDGE_METHOD_0(OnMainUrlLoaded, bool)
-    STAT_BRIDGE_METHOD_3(OnCmd, bool, unsigned short, cmd, const char*, param1, const char*, param2)
-
-virtual const char* OpenPlugin(void* fh) {
-        const char* dll_ok = NULL;
-        if (fh) {
-            STAT_PROC_IMPORT(fh, OnInit)
-            STAT_PROC_IMPORT(fh, OnFetchDb)
-            STAT_PROC_IMPORT(fh, OnFlushDb)
-            STAT_PROC_IMPORT(fh, OnClearDb)
-            STAT_PROC_IMPORT(fh, OnUpdateMainUrl)
-            STAT_PROC_IMPORT(fh, OnUpdateSubUrl)
-            STAT_PROC_IMPORT(fh, OnUrlRemovedFromMMCache)
-            STAT_PROC_IMPORT(fh, OnUrlAddedToMMCache)
-            STAT_PROC_IMPORT(fh, OnMainUrlLoaded)
-            STAT_PROC_IMPORT(fh, OnCmd)
+    StatProcessorGenericPlugin(const char* name) :
+        initialized_(false) {
+        if (NULL!=name) {
+            name_ = name;
         }
-        return dll_ok;
+        STAT_PLUGIN_IF_DEFINE(OnInit)
+        STAT_PLUGIN_IF_DEFINE(OnFetchDb)
+        STAT_PLUGIN_IF_DEFINE(OnFlushDb)
+        STAT_PLUGIN_IF_DEFINE(OnClearDb)
+        STAT_PLUGIN_IF_DEFINE(OnCmd)
+        STAT_PLUGIN_IF_DEFINE(OnGetProcName)
+        STAT_PLUGIN_IF_DEFINE(OnGetCmdMask)
     }
+
+virtual ~StatProcessorGenericPlugin() {
+    }
+
+    STAT_PLUGIN_METHOD_2(OnInit, bool, sql::Connection*, db, MessageLoop*, message_loop)
+    STAT_PLUGIN_METHOD_1(OnFetchDb, bool, sql::Connection*, db)
+    STAT_PLUGIN_METHOD_1(OnFlushDb, bool, sql::Connection*, db)
+    STAT_PLUGIN_METHOD_1(OnClearDb, bool, sql::Connection*, db)
+    STAT_PLUGIN_METHOD_6(OnCmd, bool, StatHubTimeStamp, timestamp, unsigned short, cmd, void*, param1, int, sizeofparam1, void*, param2, int, sizeofparam2)
+    STAT_PLUGIN_METHOD_1(OnGetProcName, bool, std::string&, name)
+    STAT_PLUGIN_METHOD_1(OnGetCmdMask, bool, unsigned int&, cmd_mask)
+
+    bool OpenPlugin(void* fh=NULL) {
+        if (!initialized_) {
+            if (NULL==fh && !name_.empty()) {
+                fh = dlopen(name_.c_str(), RTLD_NOW);
+            }
+            if (fh) {
+                initialized_ = true;
+                STAT_PLUGIN_IMPORT(fh, OnInit)
+                STAT_PLUGIN_IMPORT(fh, OnFetchDb)
+                STAT_PLUGIN_IMPORT(fh, OnFlushDb)
+                STAT_PLUGIN_IMPORT(fh, OnClearDb)
+                STAT_PLUGIN_IMPORT(fh, OnCmd)
+                STAT_PLUGIN_IMPORT(fh, OnGetProcName)
+                STAT_PLUGIN_IMPORT(fh, OnGetCmdMask)
+            }
+            else {
+                if(!name_.empty()) {
+                LOG(INFO) << "Failed to open plugin:" << name_.c_str();
+                }
+            }
+        }
+        return initialized_;
+    }
+
+private:
+    bool initialized_;
+    std::string name_;
 };
 
 class StatHub {
@@ -192,16 +174,16 @@ virtual ~StatHub();
 static StatHub* GetInstance();
 
     void RegisterProcessor(StatProcessor* processor);
+    StatProcessor* DeleteProcessor(StatProcessor* processor);
 
-    bool Init(const std::string& db_path, MessageLoop* message_loop);
+    bool Init(const std::string& db_path, MessageLoop* message_loop, net::HttpCache* http_cache);
     void Release();
+    bool LoadPlugin(const char* name);
 
-    void UpdateMainUrl(const char* main_url);
+    void UpdateMainUrl(const char* url);
     void UpdateSubUrl(const char* main_url,const char* sub_url);
-    void UrlRemovedFromMMCache(unsigned int hash);
-    void UrlAddedToMMCache(unsigned int hash);
-    void MainUrlLoaded();
-    void Cmd(unsigned short cmd, const char* param1, const char* param2);
+    void MainUrlLoaded(const char* url);
+    void Cmd(StatHubTimeStamp timestamp, unsigned short cmd, void* param1, int sizeofparam1, void* param2, int sizeofparam2);
 
     void FlushDBrequest();
     bool FlushDB();
@@ -217,6 +199,9 @@ static StatHub* GetInstance();
         return message_loop_;
     }
 
+    net::HttpCache* GetHttpCache() {
+        return http_cache_;
+    }
 
     sql::Connection* GetDb() {
         return db_;
@@ -232,6 +217,10 @@ static StatHub* GetInstance();
 
     StatHubVerboseLevel GetVerboseLevel() {
         return verbose_level_;
+    }
+
+    unsigned int GetCmdMask() {
+        return cmd_mask_;
     }
 
  private:
@@ -257,6 +246,7 @@ static StatHub* GetInstance();
     base::Time flush_db_request_time_;
 
     MessageLoop* message_loop_;
+    net::HttpCache* http_cache_;
 
     std::string enabled_app_name_;
 
@@ -268,6 +258,7 @@ static StatHub* GetInstance();
     StatHubVerboseLevel verbose_level_;
 
     DISALLOW_COPY_AND_ASSIGN(StatHub);
+    unsigned int    cmd_mask_;
 };
 
 }  // namespace stat_hub
