@@ -532,14 +532,6 @@ class ClientSocketPoolBaseHelper
   // in |pending_callback_map_|.
   void InvokeUserCallback(ClientSocketHandle* handle);
 
-  // Read TCP Fin Aggregation system properties, if the system properties are
-  // not defined by the user, set default values.
-  void ReadTCPFinAggregationSystemProperties();
-
-  // This function will be called by the cleanup timer to close sockets that
-  // cannot be used under specific conditions.
-  void ReaperCleanupIdleSockets();
-
   // Map of the ClientSocketHandles for which we have a pending Task to invoke a
   // callback.  This is necessary since, before we invoke said callback, it's
   // possible that the request is cancelled.
@@ -567,9 +559,6 @@ class ClientSocketPoolBaseHelper
   // Pointer to ITCPFinAggregation interface that implements
   // TCP Fin Aggregation feature.
   ITCPFinAggregation* tcp_fin_aggregation;
-
-  // TCP Fin Aggregation feature
-  bool net_tcp_fin_aggr_feature_enabled_sys_property_;
 
   // The time to wait until closing idle sockets.
   const base::TimeDelta unused_idle_socket_timeout_;

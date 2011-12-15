@@ -36,11 +36,12 @@ namespace net {
 class ITCPFinAggregation {
 
 public:
-  ITCPFinAggregation(/*ClientSocketPoolBase* pool_base*/) {};
+  ITCPFinAggregation() {};
   virtual ~ITCPFinAggregation() {};
 
-  virtual bool IsConnectedToWWAN() = 0;
+  virtual bool IsEnabled() = 0;
   virtual void ReaperCleanup() = 0;
+  virtual int GetCleanupInterval(int current_interval) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ITCPFinAggregation);

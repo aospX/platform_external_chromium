@@ -186,25 +186,12 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
 
   network_session_ = network_session;
 
-  ReadTCPFinAggregationSystemProperties();
-
   tcp_fin_aggregation = net::TCPFinAggregationFactory::GetTCPFinFactoryInstance(this)->GetTCPFinAggregation();
   if (NULL == tcp_fin_aggregation) {
     SLOGD("Failed to create TCP Fin Aggregation interface.");
-  }
-}
-
-void ClientSocketPoolBaseHelper::ReadTCPFinAggregationSystemProperties()
-{
-  char net_tcp_fin_aggr_feature_enabled_sys_property[91];
-  if(property_get("net.tcp.fin.aggregation",
-                  net_tcp_fin_aggr_feature_enabled_sys_property, "1")) {
-      net_tcp_fin_aggr_feature_enabled_sys_property_ =
-        (bool)atoi(net_tcp_fin_aggr_feature_enabled_sys_property);
-      SLOGD("system property net.tcp.fin.aggregation was set");
-  }
-  if (true == net_tcp_fin_aggr_feature_enabled_sys_property_) {
-    kCleanupInterval = 2;
+  } else {
+    int new_cleanup_interval = tcp_fin_aggregation->GetCleanupInterval(kCleanupInterval);
+    kCleanupInterval = new_cleanup_interval;
   }
 }
 
@@ -664,11 +651,6 @@ void ClientSocketPoolBaseHelper::CleanupIdleSockets(bool force) {
   }
 }
 
-void ClientSocketPoolBaseHelper::ReaperCleanupIdleSockets()
-{
-  tcp_fin_aggregation->ReaperCleanup();
-}
-
 ClientSocketPoolBaseHelper::Group* ClientSocketPoolBaseHelper::GetOrCreateGroup(
     const std::string& group_name) {
   GroupMap::iterator it = group_map_.find(group_name);
@@ -721,10 +703,9 @@ void ClientSocketPoolBaseHelper::DecrementIdleCount() {
 
 void ClientSocketPoolBaseHelper::OnCleanupTimerFired()
 {
-  if(net_tcp_fin_aggr_feature_enabled_sys_property_ &&
-     (NULL != tcp_fin_aggregation) &&
-     (tcp_fin_aggregation->IsConnectedToWWAN())) {
-    ReaperCleanupIdleSockets();
+  if((NULL != tcp_fin_aggregation) &&
+     (tcp_fin_aggregation->IsEnabled())) {
+    tcp_fin_aggregation->ReaperCleanup();
   }
   else {
     CleanupIdleSockets(false);
