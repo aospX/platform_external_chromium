@@ -287,14 +287,14 @@ void BlockFiles::DeleteBlock(Addr address, bool deep) {
 
   Trace("DeleteBlock 0x%x", address.value());
 
-  BlockFileHeader* header = reinterpret_cast<BlockFileHeader*>(file->buffer());
-  DeleteMapBlock(address.start_block(), address.num_blocks(), header);
-
   size_t size = address.BlockSize() * address.num_blocks();
   size_t offset = address.start_block() * address.BlockSize() +
                   kBlockHeaderSize;
   if (deep)
     file->Write(zero_buffer_, size, offset);
+
+  BlockFileHeader* header = reinterpret_cast<BlockFileHeader*>(file->buffer());
+  DeleteMapBlock(address.start_block(), address.num_blocks(), header);
 
   if (!header->num_entries) {
     // This file is now empty. Let's try to delete it.
@@ -417,6 +417,12 @@ bool BlockFiles::OpenBlockFile(int index) {
     // Last instance was not properly shutdown.
     if (!FixBlockFileHeader(file))
       return false;
+  }
+
+  if (static_cast<int>(file_len) <
+      header->max_entries * header->entry_size + kBlockHeaderSize) {
+    LOG(ERROR) << "File too small " << name.value();
+    return false;
   }
 
   if (index == 0) {

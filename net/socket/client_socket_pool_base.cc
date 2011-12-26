@@ -28,6 +28,14 @@ using base::TimeDelta;
 
 namespace {
 
+// Indicate whether we should enable idle socket cleanup timer. When timer is
+// disabled, sockets are closed next time a socket request is made.
+#ifdef ANDROID
+bool g_cleanup_timer_enabled = false;
+#else
+bool g_cleanup_timer_enabled = true;
+#endif
+
 // The timeout value, in seconds, used to clean up idle sockets that can't be
 // reused.
 //
@@ -173,6 +181,7 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
       handed_out_socket_count_(0),
       max_sockets_(max_sockets),
       max_sockets_per_group_(max_sockets_per_group),
+      use_cleanup_timer_(g_cleanup_timer_enabled),
       unused_idle_socket_timeout_(unused_idle_socket_timeout),
       used_idle_socket_timeout_(used_idle_socket_timeout),
       connect_job_factory_(connect_job_factory),
@@ -238,6 +247,10 @@ int ClientSocketPoolBaseHelper::RequestSocket(
   CHECK(request->callback());
   CHECK(request->handle());
 
+  // Cleanup any timed-out idle sockets if no timer is used.
+  if (!use_cleanup_timer_)
+    CleanupIdleSockets(false);
+
   request->net_log().BeginEvent(NetLog::TYPE_SOCKET_POOL, NULL);
   Group* group = GetOrCreateGroup(group_name);
 
@@ -258,6 +271,10 @@ void ClientSocketPoolBaseHelper::RequestSockets(
     int num_sockets) {
   DCHECK(!request.callback());
   DCHECK(!request.handle());
+
+  // Cleanup any timed out idle sockets if no timer is used.
+  if (!use_cleanup_timer_)
+    CleanupIdleSockets(false);
 
   if (num_sockets > max_sockets_per_group_) {
     num_sockets = max_sockets_per_group_;
@@ -691,8 +708,7 @@ void ClientSocketPoolBaseHelper::EnableConnectBackupJobs() {
 
 void ClientSocketPoolBaseHelper::IncrementIdleCount() {
   if (++idle_socket_count_ == 1)
-    timer_.Start(TimeDelta::FromSeconds(kCleanupInterval), this,
-                 &ClientSocketPoolBaseHelper::OnCleanupTimerFired);
+    StartIdleSocketTimer();
 }
 
 void ClientSocketPoolBaseHelper::DecrementIdleCount() {
@@ -710,6 +726,23 @@ void ClientSocketPoolBaseHelper::OnCleanupTimerFired()
   else {
     CleanupIdleSockets(false);
   }
+}
+
+// static
+bool ClientSocketPoolBaseHelper::cleanup_timer_enabled() {
+  return g_cleanup_timer_enabled;
+}
+
+// static
+bool ClientSocketPoolBaseHelper::set_cleanup_timer_enabled(bool enabled) {
+  bool old_value = g_cleanup_timer_enabled;
+  g_cleanup_timer_enabled = enabled;
+  return old_value;
+}
+
+void ClientSocketPoolBaseHelper::StartIdleSocketTimer() {
+  timer_.Start(TimeDelta::FromSeconds(kCleanupInterval), this,
+               &ClientSocketPoolBaseHelper::OnCleanupTimerFired);
 }
 
 void ClientSocketPoolBaseHelper::ReleaseSocket(const std::string& group_name,
@@ -902,8 +935,7 @@ void ClientSocketPoolBaseHelper::ProcessPendingRequest(
       RemoveGroup(group_name);
 
     request->net_log().EndEventWithNetErrorCode(NetLog::TYPE_SOCKET_POOL, rv);
-    InvokeUserCallbackLater(
-        request->handle(), request->callback(), rv);
+    InvokeUserCallbackLater(request->handle(), request->callback(), rv);
   }
 }
 

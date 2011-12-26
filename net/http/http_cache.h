@@ -32,6 +32,7 @@
 #include "net/base/cache_type.h"
 #include "net/base/completion_callback.h"
 #include "net/base/load_states.h"
+#include "net/base/net_export.h"
 #include "net/http/http_transaction_factory.h"
 
 class GURL;
@@ -58,7 +59,7 @@ class ProxyService;
 class SSLConfigService;
 class ViewCacheHelper;
 
-class HttpCache : public HttpTransactionFactory,
+class NET_EXPORT HttpCache : public HttpTransactionFactory,
                   public base::SupportsWeakPtr<HttpCache>,
                   public base::NonThreadSafe {
  public:
@@ -77,7 +78,7 @@ class HttpCache : public HttpTransactionFactory,
   };
 
   // A BackendFactory creates a backend object to be used by the HttpCache.
-  class BackendFactory {
+  class NET_EXPORT BackendFactory {
    public:
     virtual ~BackendFactory() {}
 
@@ -94,7 +95,7 @@ class HttpCache : public HttpTransactionFactory,
   };
 
   // A default backend factory for the common use cases.
-  class DefaultBackend : public BackendFactory {
+  class NET_EXPORT DefaultBackend : public BackendFactory {
    public:
     // |path| is the destination for any files used by the backend, and
     // |cache_thread| is the thread where disk operations should take place. If

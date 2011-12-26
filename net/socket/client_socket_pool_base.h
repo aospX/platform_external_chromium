@@ -324,6 +324,14 @@ class ClientSocketPoolBaseHelper
 
   bool HasGroup(const std::string& group_name) const;
 
+  // Called to enable/disable cleaning up idle sockets. When enabled,
+  // idle sockets that have been around for longer than a period defined
+  // by kCleanupInterval are cleaned up using a timer. Otherwise they are
+  // closed next time client makes a request. This may reduce network
+  // activity and power consumption.
+  static bool cleanup_timer_enabled();
+  static bool set_cleanup_timer_enabled(bool enabled);
+
   // Closes all idle sockets if |force| is true.  Else, only closes idle
   // sockets that timed out or can't be reused.  Made public for testing.
   void CleanupIdleSockets(bool force);
@@ -450,6 +458,9 @@ class ClientSocketPoolBaseHelper
 
   Group* GetOrCreateGroup(const std::string& group_name);
 
+  // Start cleanup timer for idle sockets.
+  void StartIdleSocketTimer();
+
   // Scans the group map for groups which have an available socket slot and
   // at least one pending request. Returns true if any groups are stalled, and
   // if so, fills |group| and |group_name| with data of the stalled group
@@ -559,6 +570,11 @@ class ClientSocketPoolBaseHelper
   // Pointer to ITCPFinAggregation interface that implements
   // TCP Fin Aggregation feature.
   ITCPFinAggregation* tcp_fin_aggregation;
+
+  // TCP Fin Aggregation feature
+  bool net_tcp_fin_aggr_feature_enabled_sys_property_;
+  // Whether to use timer to cleanup idle sockets.
+  bool use_cleanup_timer_;
 
   // The time to wait until closing idle sockets.
   const base::TimeDelta unused_idle_socket_timeout_;

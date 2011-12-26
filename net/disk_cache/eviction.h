@@ -1,4 +1,4 @@
-// Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -50,7 +50,7 @@ class Eviction {
   bool ShouldTrim();
   void ReportTrimTimes(EntryImpl* entry);
   Rankings::List GetListForEntry(EntryImpl* entry);
-  bool EvictEntry(CacheRankingsBlock* node, bool empty);
+  bool EvictEntry(CacheRankingsBlock* node, bool empty, Rankings::List list);
 
   // We'll just keep for a while a separate set of methods that implement the
   // new eviction algorithm. This code will replace the original methods when
@@ -66,7 +66,7 @@ class Eviction {
   bool RemoveDeletedNode(CacheRankingsBlock* node);
 
   bool NodeIsOldEnough(CacheRankingsBlock* node, int list);
-  int SelectListByLenght();
+  int SelectListByLength(Rankings::ScopedRankingsBlock* next);
   void ReportListStats();
 
   BackendImpl* backend_;
