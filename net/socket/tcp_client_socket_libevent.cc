@@ -1,5 +1,4 @@
 // Copyright (c) 2010 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,7 +26,6 @@
 #include "net/base/net_log.h"
 #include "net/base/net_util.h"
 #include "net/base/network_change_notifier.h"
-#include "tcp_keepalive_bridge.h"
 #if defined(USE_SYSTEM_LIBEVENT)
 #include <event.h>
 #else
@@ -534,9 +532,9 @@ int TCPClientSocketLibevent::SetupSocket() {
   // ANDROID: Disable TCP keep-alive for bug 5226268
   // [Browser] http keep-alive packets are sent too frequently to network
 
-  if (IsKeepAliveEnabled()) {
+#ifndef ANDROID
      SetTCPKeepAlive(socket_);
-  }
+#endif
 
 #ifdef ANDROID
   if (valid_uid_)
