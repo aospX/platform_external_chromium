@@ -1,5 +1,4 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +12,6 @@
 #include "net/http/http_stream_parser.h"
 #include "net/http/http_util.h"
 #include "net/socket/client_socket_handle.h"
-#include "net/http/http_connection_reuse_bridge.h"
 
 namespace net {
 
