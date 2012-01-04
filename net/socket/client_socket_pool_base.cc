@@ -1,5 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+// Copyright (c) 2011,2012, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -248,8 +248,9 @@ int ClientSocketPoolBaseHelper::RequestSocket(
   CHECK(request->handle());
 
   // Cleanup any timed-out idle sockets if no timer is used.
-  if (!use_cleanup_timer_)
+  if ((!use_cleanup_timer_) && ((NULL == tcp_fin_aggregation) || (((NULL != tcp_fin_aggregation) && !tcp_fin_aggregation->IsEnabled())))) {
     CleanupIdleSockets(false);
+  }
 
   request->net_log().BeginEvent(NetLog::TYPE_SOCKET_POOL, NULL);
   Group* group = GetOrCreateGroup(group_name);
@@ -273,8 +274,9 @@ void ClientSocketPoolBaseHelper::RequestSockets(
   DCHECK(!request.handle());
 
   // Cleanup any timed out idle sockets if no timer is used.
-  if (!use_cleanup_timer_)
+  if ((!use_cleanup_timer_) && ((NULL == tcp_fin_aggregation) || (((NULL != tcp_fin_aggregation) && !tcp_fin_aggregation->IsEnabled())))) {
     CleanupIdleSockets(false);
+  }
 
   if (num_sockets > max_sockets_per_group_) {
     num_sockets = max_sockets_per_group_;
