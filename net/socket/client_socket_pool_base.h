@@ -1,5 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+// Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -573,8 +573,12 @@ class ClientSocketPoolBaseHelper
 
   // TCP Fin Aggregation feature
   bool net_tcp_fin_aggr_feature_enabled_sys_property_;
+
   // Whether to use timer to cleanup idle sockets.
   bool use_cleanup_timer_;
+
+  // Whether unused sockets are closed after page load fnished
+  bool close_unused_sockets_enabled;
 
   // The time to wait until closing idle sockets.
   const base::TimeDelta unused_idle_socket_timeout_;

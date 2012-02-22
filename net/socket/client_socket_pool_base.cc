@@ -42,11 +42,22 @@ bool g_cleanup_timer_enabled = true;
 // Note: It's important to close idle sockets that have received data as soon
 // as possible because the received data may cause BSOD on Windows XP under
 // some conditions.  See http://crbug.com/4606.
-int kCleanupInterval = 10;  // DO NOT INCREASE THIS TIMEOUT.
+int kCleanupInterval = 2;  // DO NOT INCREASE THIS TIMEOUT.
 
 // Indicate whether or not we should establish a new transport layer connection
 // after a certain timeout has passed without receiving an ACK.
 bool g_connect_backup_jobs_enabled = true;
+
+// Indicate whether or not we should close the unused sockets in the next run
+// of the reaper cleanup thread.
+bool g_close_unused_sockets = false;
+
+// Called to inform that we should close the unused sockets that resides in
+// the idle pool.
+extern "C" void SetCloseUnUsedSocketsFlag()
+{
+  g_close_unused_sockets = true;
+}
 
 }  // namespace
 
@@ -201,6 +212,13 @@ ClientSocketPoolBaseHelper::ClientSocketPoolBaseHelper(
   } else {
     int new_cleanup_interval = tcp_fin_aggregation->GetCleanupInterval(kCleanupInterval);
     kCleanupInterval = new_cleanup_interval;
+  }
+
+  close_unused_sockets_enabled = false;
+  char netCloseUnusedSocketsSystemProperty[PROPERTY_VALUE_MAX];
+  if(property_get("net.close.unused.sockets",
+                  netCloseUnusedSocketsSystemProperty, "1")) {
+    close_unused_sockets_enabled = (bool)atoi(netCloseUnusedSocketsSystemProperty);
   }
 }
 
@@ -636,8 +654,9 @@ bool IdleSocket::ShouldCleanup(
 }
 
 void ClientSocketPoolBaseHelper::CleanupIdleSockets(bool force) {
-  if (idle_socket_count_ == 0)
+  if (idle_socket_count_ == 0) {
     return;
+  }
 
   // Current time value. Retrieving it once at the function start rather than
   // inside the inner loop, since it shouldn't change by any meaningful amount.
@@ -652,7 +671,8 @@ void ClientSocketPoolBaseHelper::CleanupIdleSockets(bool force) {
       base::TimeDelta timeout =
           j->socket->WasEverUsed() ?
           used_idle_socket_timeout_ : unused_idle_socket_timeout_;
-      if (force || j->ShouldCleanup(now, timeout)) {
+      if (force || j->ShouldCleanup(now, timeout) ||
+          ((true == close_unused_sockets_enabled) && (true == g_close_unused_sockets) && !j->socket->WasEverUsed())) {
         delete j->socket;
         j = group->mutable_idle_sockets()->erase(j);
         DecrementIdleCount();
@@ -723,11 +743,12 @@ void ClientSocketPoolBaseHelper::OnCleanupTimerFired()
 {
   if((NULL != tcp_fin_aggregation) &&
      (tcp_fin_aggregation->IsEnabled())) {
-    tcp_fin_aggregation->ReaperCleanup();
+    tcp_fin_aggregation->ReaperCleanup(g_close_unused_sockets);
   }
   else {
     CleanupIdleSockets(false);
   }
+  g_close_unused_sockets = false;
 }
 
 // static

@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+// Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -40,7 +40,7 @@ public:
   virtual ~ITCPFinAggregation() {};
 
   virtual bool IsEnabled() = 0;
-  virtual void ReaperCleanup() = 0;
+  virtual void ReaperCleanup(bool close_unused_socket) = 0;
   virtual int GetCleanupInterval(int current_interval) = 0;
 
 private:
