@@ -1,5 +1,5 @@
 // Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+// Copyright (c) 2011, 2012, Code Aurora Forum. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -389,9 +389,6 @@ HttpCache::~HttpCache() {
     entry->readers.clear();
     entry->writer = NULL;
     DeactivateEntry(entry);
-    if (NULL!=stat_db_path_) {
-        delete stat_db_path_;
-    }
   }
 
   STLDeleteElements(&doomed_entries_);
@@ -420,6 +417,10 @@ HttpCache::~HttpCache() {
     STLDeleteElements(&pending_op->pending_queue);
     if (delete_pending_op)
       delete pending_op;
+  }
+
+  if (NULL!=stat_db_path_) {
+      delete stat_db_path_;
   }
 }
 
