@@ -1,5 +1,5 @@
 /** ---------------------------------------------------------------------------
- Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ Copyright (c) 2011, 2012 Code Aurora Forum. All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions are
@@ -67,6 +67,7 @@ stat_hub::StatProcessor* StatHubCreateHostResPlugin()
         else {
             LOG(INFO) << "Failed to open plugin:" << hostres_plugin_name;
         }
+        delete hp;
     }
     return NULL;
 
