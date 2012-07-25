@@ -35,6 +35,8 @@
 #include <cutils/qtaguid.h>
 #endif
 
+#define NETLOG_CACHE_SIZE   65536
+
 namespace net {
 
 namespace {
@@ -118,6 +120,7 @@ TCPClientSocketLibevent::TCPClientSocketLibevent(
       net_log_(BoundNetLog::Make(net_log, NetLog::SOURCE_SOCKET)),
       previously_disconnected_(false),
       use_tcp_fastopen_(false),
+      nread_cached_(0),
       tcp_fastopen_connected_(false)
 #ifdef ANDROID
       , wait_for_connect_(false)
@@ -394,8 +397,17 @@ int TCPClientSocketLibevent::Read(IOBuffer* buf,
     read_bytes.Add(nread);
     if (nread > 0)
       use_history_.set_was_used_to_convey_data();
-    LogByteTransfer(
+    if (!net_log_.IsLoggingBytes()) {
+      nread_cached_ += nread;
+        if (nread_cached_ >= NETLOG_CACHE_SIZE) {
+          LogByteTransfer(
+            net_log_, NetLog::TYPE_SOCKET_BYTES_RECEIVED, nread_cached_, NULL);
+          nread_cached_ = 0;
+        }
+    } else {
+      LogByteTransfer(
         net_log_, NetLog::TYPE_SOCKET_BYTES_RECEIVED, nread, buf->data());
+    }
     return nread;
   }
   if (errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -631,8 +643,17 @@ void TCPClientSocketLibevent::DidCompleteRead() {
     read_bytes.Add(bytes_transferred);
     if (bytes_transferred > 0)
       use_history_.set_was_used_to_convey_data();
-    LogByteTransfer(net_log_, NetLog::TYPE_SOCKET_BYTES_RECEIVED, result,
-                    read_buf_->data());
+    if (!net_log_.IsLoggingBytes()) {
+      nread_cached_ += result;
+      if (nread_cached_ >= NETLOG_CACHE_SIZE) {
+        LogByteTransfer(
+                net_log_, NetLog::TYPE_SOCKET_BYTES_RECEIVED, nread_cached_, NULL);
+        nread_cached_ = 0;
+      }
+    } else {
+      LogByteTransfer(net_log_, NetLog::TYPE_SOCKET_BYTES_RECEIVED, result,
+              read_buf_->data());
+    }
   } else {
     result = MapSystemError(errno);
   }

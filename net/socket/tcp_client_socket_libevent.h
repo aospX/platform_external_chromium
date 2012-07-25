@@ -172,6 +172,9 @@ class TCPClientSocketLibevent : public ClientSocket, base::NonThreadSafe {
   scoped_refptr<IOBuffer> write_buf_;
   int write_buf_len_;
 
+  // Cache the read bytes for logging
+  int nread_cached_;
+
   // External callback; called when read is complete.
   CompletionCallback* read_callback_;
 
